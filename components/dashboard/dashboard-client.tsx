@@ -186,7 +186,7 @@ export default function DashboardClient({
       map.set(m, entry);
     });
     return Array.from(map.entries()).map(([month, data]) => ({ month, ...data }));
-  }, [vehicleFilteredFillups]);
+  }, [vehicleFilteredFillups, fuelFactor]);
 
   const monthlyCO2 = useMemo(() => {
     const factor = (fuelType?: string) => {
