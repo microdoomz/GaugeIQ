@@ -2,32 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background: 210 20% 98%;
+    --foreground: 220 23% 18%;
+    --muted: 214 32% 91%;
+    --card: 0 0% 100%;
+    --border: 214 20% 88%;
+    --primary: 222 76% 55%;
+    --secondary: 180 64% 52%;
+    --accent: 25 95% 53%;
   }
-}
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  .dark {
+    --background: 224 35% 7%;
+    --foreground: 214 32% 92%;
+    --muted: 220 24% 17%;
+    --card: 224 35% 9%;
+    --border: 220 18% 20%;
+    --primary: 222 76% 65%;
+    --secondary: 175 70% 48%;
+    --accent: 25 95% 63%;
+  }
+
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  html {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+.glass-card {
+  @apply bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl shadow-soft backdrop-blur;
 }
