@@ -352,48 +352,6 @@ export default function DashboardClient({
         <StatCard title="Emissions" value={`${oneDecimal(displayMetrics.totalCO2)} ${co2UnitLabel} CO₂`} hint="Based on fuel mix" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Daily distance" description="Computed from odometer deltas">
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={distanceSeries} margin={{ left: -16, right: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="date" tickFormatter={formatDateLabel} fontSize={12} />
-              <YAxis width={50} tickFormatter={(v) => `${v}`} fontSize={12} />
-              <Tooltip labelFormatter={(v) => formatDateLabel(String(v))} formatter={(v: number) => [`${oneDecimal(v)} ${distanceUnitLabel}`, "Distance"]} />
-              <Line type="monotone" dataKey="km" stroke="#6366f1" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Mileage trend" description="Between consecutive fill-ups">
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={mileageCyclesDisplay} margin={{ left: -8, right: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="date" tickFormatter={formatDateLabel} fontSize={12} />
-              <YAxis width={50} tickFormatter={(v) => `${v}`} fontSize={12} />
-              <Tooltip
-                labelFormatter={(v) => formatDateLabel(String(v))}
-                formatter={(v: number) => [`${oneDecimal(v)} ${distanceUnitLabel}/${fuelUnitLabel}`, "Mileage"]}
-              />
-              <Line type="monotone" dataKey="mileage" stroke="#22c55e" strokeWidth={2} dot />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Vehicle share" description="Distance split by vehicle">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={distanceByVehicle} dataKey="distance" nameKey="vehicle" innerRadius={60} outerRadius={90}>
-                {distanceByVehicle.map((_, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v: number, _name, entry) => [`${oneDecimal(v)} ${distanceUnitLabel}`, entry?.payload?.vehicle ?? ""]} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Monthly fuel & cost" description={`Fuel volume (${fuelUnitLabel}) vs spend`}>
           <ResponsiveContainer width="100%" height={260}>
@@ -427,7 +385,52 @@ export default function DashboardClient({
           </ResponsiveContainer>
         </ChartCard>
 
-        <div className="grid gap-3">
+        {/* Repeat the core charts below the monthly summaries as requested */}
+        <div className="lg:col-span-2">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <ChartCard title="Daily distance" description="Computed from odometer deltas">
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={distanceSeries} margin={{ left: -16, right: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tickFormatter={formatDateLabel} fontSize={12} />
+                  <YAxis width={50} tickFormatter={(v) => `${v}`} fontSize={12} />
+                  <Tooltip labelFormatter={(v) => formatDateLabel(String(v))} formatter={(v: number) => [`${oneDecimal(v)} ${distanceUnitLabel}`, "Distance"]} />
+                  <Line type="monotone" dataKey="km" stroke="#6366f1" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="Mileage trend" description="Between consecutive fill-ups">
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={mileageCyclesDisplay} margin={{ left: -8, right: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tickFormatter={formatDateLabel} fontSize={12} />
+                  <YAxis width={50} tickFormatter={(v) => `${v}`} fontSize={12} />
+                  <Tooltip
+                    labelFormatter={(v) => formatDateLabel(String(v))}
+                    formatter={(v: number) => [`${oneDecimal(v)} ${distanceUnitLabel}/${fuelUnitLabel}`, "Mileage"]}
+                  />
+                  <Line type="monotone" dataKey="mileage" stroke="#22c55e" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="Vehicle share" description="Distance split by vehicle">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={distanceByVehicle} dataKey="distance" nameKey="vehicle" innerRadius={60} outerRadius={90}>
+                    {distanceByVehicle.map((_, idx) => (
+                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number, _name, entry) => [`${oneDecimal(v)} ${distanceUnitLabel}`, entry?.payload?.vehicle ?? ""]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:col-span-2 lg:grid-cols-2">
           <div className="glass-card p-4">
             <p className="text-sm font-medium">Projections</p>
             <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">

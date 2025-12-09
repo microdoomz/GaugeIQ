@@ -42,7 +42,7 @@ function LoginContent() {
         </div>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <Input type="email" name="email" label="Email" placeholder="you@example.com" required />
-          <Input type="password" name="password" label="Password" required />
+          <Input type="password" name="password" label="Password" required showToggle />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Login"}
