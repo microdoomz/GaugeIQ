@@ -6,25 +6,48 @@ import { Vehicle, UserPreferences } from "@/lib/types";
 export const revalidate = 0;
 
 export default async function VehiclesPage() {
+  const trace = async <T,>(label: string, fn: () => Promise<T>) => {
+    const start = Date.now();
+    const result = await fn();
+    if (process.env.SUPABASE_TRACE === "true") {
+      console.log(`[supabase] ${label} ${Date.now() - start}ms`);
+    }
+    return result;
+  };
+
   const supabase = createSupabaseServerClient();
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    console.warn("auth.getSession error", sessionError.message);
+    redirect(`/login?redirect=/vehicles`);
+  }
 
   if (!session) redirect(`/login?redirect=/vehicles`);
 
   const userId = session.user.id;
-  const { data: vehiclesData = [] } = await supabase
-    .from("vehicles")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+  const [vehiclesRes, profileRes] = await Promise.all([
+    trace("vehicles", async () =>
+      supabase
+        .from("vehicles")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+    ),
+    trace("profiles", async () =>
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle()
+    ),
+  ]);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const vehiclesData = vehiclesRes.data ?? [];
+  const profile = profileRes.data;
 
   const vehicles = (vehiclesData ?? []) as Vehicle[];
 

@@ -14,10 +14,25 @@ export default async function DashboardPage({
 }: {
   searchParams?: { timeframe?: Timeframe; from?: string; to?: string };
 }) {
+  const trace = async <T,>(label: string, fn: () => Promise<T>) => {
+    const start = Date.now();
+    const result = await fn();
+    if (process.env.SUPABASE_TRACE === "true") {
+      console.log(`[supabase] ${label} ${Date.now() - start}ms`);
+    }
+    return result;
+  };
+
   const supabase = createSupabaseServerClient();
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    console.warn("auth.getSession error", sessionError.message);
+    redirect(`/login?redirect=/dashboard`);
+  }
 
   if (!session) {
     redirect(`/login?redirect=/dashboard`);
@@ -25,29 +40,41 @@ export default async function DashboardPage({
 
   const userId = session!.user.id;
 
-  const { data: vehiclesData = [] } = await supabase
-    .from("vehicles")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+  const [vehiclesRes, entriesRes, fillupsRes, profileRes] = await Promise.all([
+    trace("vehicles", async () =>
+      supabase
+        .from("vehicles")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+    ),
+    trace("daily_odometer_entries", async () =>
+      supabase
+        .from("daily_odometer_entries")
+        .select("*")
+        .eq("user_id", userId)
+        .order("date", { ascending: true })
+    ),
+    trace("fuel_fillups", async () =>
+      supabase
+        .from("fuel_fillups")
+        .select("*")
+        .eq("user_id", userId)
+        .order("date", { ascending: true })
+    ),
+    trace("profiles", async () =>
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle()
+    ),
+  ]);
 
-  const { data: entriesData = [] } = await supabase
-    .from("daily_odometer_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: true });
-
-  const { data: fillupsData = [] } = await supabase
-    .from("fuel_fillups")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: true });
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const vehiclesData = vehiclesRes.data ?? [];
+  const entriesData = entriesRes.data ?? [];
+  const fillupsData = fillupsRes.data ?? [];
+  const profile = profileRes.data;
 
   const vehicles = (vehiclesData ?? []) as Vehicle[];
   const entries = (entriesData ?? []) as DailyOdometerEntry[];
