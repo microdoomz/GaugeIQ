@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ThemeContext } from "../theme-context";
 import { NavLinks } from "./nav-links";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { NavPrefetcher } from "./nav-prefetcher";
 
 export const TopBar = ({
   email,
@@ -54,7 +55,8 @@ export const TopBar = ({
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/90 px-3 py-3 backdrop-blur">
+    <>
+      <header className="sticky top-0 z-20 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))]/90 px-3 py-3 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 md:gap-3">
         <div className="flex w-full items-center justify-between gap-2">
           <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold whitespace-nowrap">
@@ -152,6 +154,8 @@ export const TopBar = ({
             document.body
           )
         : null}
-    </header>
+      </header>
+      <NavPrefetcher />
+    </>
   );
 };
