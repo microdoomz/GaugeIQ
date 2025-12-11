@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import clsx from "classnames";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface HistoryClientProps {
   entries: DailyOdometerEntry[];
@@ -35,6 +37,7 @@ const typeOptions = [
 export function HistoryClient({ entries, fillups, vehicles, initialTimeframe, preferences }: HistoryClientProps) {
   const supabase = createSupabaseBrowserClient();
   const router = useRouter();
+  const { push } = useToast();
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>(() => {
     const r = defaultRangeForTimeframe(initialTimeframe);
@@ -48,6 +51,7 @@ export function HistoryClient({ entries, fillups, vehicles, initialTimeframe, pr
   const [savingId, setSavingId] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
+  const [confirm, setConfirm] = useState<HistoryItem | null>(null);
 
   useEffect(() => {
     setPrefs(preferences);
@@ -99,14 +103,20 @@ export function HistoryClient({ entries, fillups, vehicles, initialTimeframe, pr
 
   const handleDelete = async (item: HistoryItem) => {
     setDeletingId(item.id);
-    if (item.type === "fuel") {
-      await supabase.from("fuel_fillups").delete().eq("id", item.id);
+    const { error } =
+      item.type === "fuel"
+        ? await supabase.from("fuel_fillups").delete().eq("id", item.id)
+        : await supabase.from("daily_odometer_entries").delete().eq("id", item.id);
+
+    if (error) {
+      push({ message: error.message, type: "error" });
     } else {
-      await supabase.from("daily_odometer_entries").delete().eq("id", item.id);
+      setSuccess("Deleted");
+      push({ message: "Deleted", type: "success" });
+      router.refresh();
     }
     setDeletingId(null);
-    setSuccess("Deleted");
-    router.refresh();
+    setConfirm(null);
   };
 
   const [editFuel, setEditFuel] = useState({
@@ -401,7 +411,7 @@ export function HistoryClient({ entries, fillups, vehicles, initialTimeframe, pr
                 {savingId ? "Saving..." : "Save"}
               </button>
               <button
-                onClick={() => detail && handleDelete(detail)}
+                onClick={() => detail && setConfirm(detail)}
                 disabled={!!deletingId}
                 className="rounded-lg border border-[hsl(var(--destructive))] px-4 py-2 text-[hsl(var(--destructive))]"
               >
@@ -411,6 +421,15 @@ export function HistoryClient({ entries, fillups, vehicles, initialTimeframe, pr
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(confirm)}
+        title="Delete entry?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm && handleDelete(confirm)}
+        loading={Boolean(deletingId)}
+      />
     </div>
   );
 }

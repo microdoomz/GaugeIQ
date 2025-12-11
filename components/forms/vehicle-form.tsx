@@ -7,17 +7,17 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { useToast } from "../ui/toast";
 
 export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?: () => void }) => {
   const supabase = createSupabaseBrowserClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
+  const { push } = useToast();
 
   const handleSubmit = async (formData: FormData) => {
     setError(null);
-    setSuccess(null);
     setLoading(true);
     const make = String(formData.get("make") || "");
     const model = String(formData.get("model") || "");
@@ -40,7 +40,7 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
     if (insertError) {
       setError(insertError.message);
     } else {
-      setSuccess("Saved");
+      push({ message: "Saved", type: "success" });
       onCreated?.();
       router.refresh();
     }
@@ -92,7 +92,6 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
           {loading ? "Saving..." : "Save vehicle"}
         </Button>
         <div className="flex items-center gap-3">
-          {success && <span className="text-sm text-green-600">{success}</span>}
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
       </div>

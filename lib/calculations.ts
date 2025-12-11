@@ -7,6 +7,29 @@ const CO2_FACTORS: Record<string, number> = {
   default: 2.3,
 };
 
+export const computeTripEstimates = ({
+  startOdometer,
+  endOdometer,
+  fuelVolume,
+  typicalMileage,
+  fuelType,
+  pricePerLitre,
+}: {
+  startOdometer: number;
+  endOdometer: number;
+  fuelVolume?: number | null;
+  typicalMileage?: number | null;
+  fuelType?: string | null;
+  pricePerLitre?: number | null;
+}) => {
+  const distance = Math.max(endOdometer - startOdometer, 0);
+  const estimatedFuel = fuelVolume ?? (typicalMileage ? distance / typicalMileage : null);
+  const factor = CO2_FACTORS[fuelType ?? "default"] ?? CO2_FACTORS.default;
+  const estimatedCO2 = estimatedFuel != null ? estimatedFuel * factor : null;
+  const estimatedCost = estimatedFuel != null && pricePerLitre != null ? estimatedFuel * pricePerLitre : null;
+  return { distance, estimatedFuel, estimatedCO2, estimatedCost };
+};
+
 export interface DashboardMetrics {
   totalKm: number;
   totalFuel: number;

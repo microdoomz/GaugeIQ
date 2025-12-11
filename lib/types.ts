@@ -88,3 +88,18 @@ export interface HistoryFuelItem extends HistoryItemBase {
 }
 
 export type HistoryItem = HistoryOdometerItem | HistoryFuelItem;
+
+export interface Trip {
+  id: string;
+  user_id: string;
+  vehicle_id: string;
+  start_date: string;
+  end_date: string;
+  start_odometer: number;
+  end_odometer: number;
+  distance: number;
+  fuelVolume?: number | null;
+  totalCost?: number | null;
+  notes?: string | null;
+  created_at: string;
+}

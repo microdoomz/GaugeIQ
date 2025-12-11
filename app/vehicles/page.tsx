@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { VehicleForm } from "@/components/forms/vehicle-form";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { Vehicle, UserPreferences } from "@/lib/types";
+import { VehiclesList } from "@/components/vehicles/vehicles-list";
 export const revalidate = 0;
 
 export default async function VehiclesPage() {
@@ -91,24 +92,13 @@ export default async function VehiclesPage() {
             <h2 className="text-lg font-semibold">Your vehicles</h2>
             <p className="text-xs text-[hsl(var(--foreground))]/60">{vehicles.length} saved</p>
           </div>
-          <div className="mt-3 divide-y divide-[hsl(var(--border))] text-sm">
-            {vehicles.map((v: Vehicle) => (
-              <div key={v.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium">{v.make} {v.model} {v.variant ? `· ${v.variant}` : ""}</p>
-                  <p className="text-[hsl(var(--foreground))]/70">{v.year} · {v.vehicleType} · {v.fuelType}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[hsl(var(--foreground))]/70">Typical mileage</p>
-                  <p className="font-semibold">
-                    {v.typicalMileage
-                      ? `${(v.typicalMileage * distanceFactor / (fuelFactor || 1)).toFixed(1)} ${mileageUnitLabel}`
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {!vehicles.length && <p className="py-3 text-[hsl(var(--foreground))]/60">No vehicles yet. Add one to begin tracking.</p>}
+          <div className="mt-3">
+            <VehiclesList
+              vehicles={vehicles}
+              distanceFactor={distanceFactor}
+              fuelFactor={fuelFactor}
+              mileageUnitLabel={mileageUnitLabel}
+            />
           </div>
         </div>
       </div>

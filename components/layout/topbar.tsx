@@ -27,7 +27,7 @@ export const TopBar = ({
 
   useEffect(() => {
     setName(displayName ?? "");
-    if (!displayName && !namePromptDismissed) {
+    if (!displayName && namePromptDismissed === false) {
       setShowPrompt(true);
     } else {
       setShowPrompt(false);

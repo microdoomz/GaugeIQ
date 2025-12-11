@@ -7,20 +7,20 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { Vehicle, UserPreferences } from "@/lib/types";
+import { useToast } from "../ui/toast";
 
 export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userId: string; vehicles: Vehicle[]; onSaved?: () => void; preferences?: UserPreferences }) => {
   const supabase = createSupabaseBrowserClient();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
+  const { push } = useToast();
 
   const distanceUnitLabel = preferences?.distanceUnit ?? "km";
 
   const handleSubmit = async (formData: FormData) => {
     setLoading(true);
     setError(null);
-    setSuccess(null);
     const vehicle_id = String(formData.get("vehicle_id"));
     const date = String(formData.get("date"));
     const odometerReading = Number(formData.get("odometerReading"));
@@ -51,7 +51,7 @@ export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userI
     });
     if (insertError) setError(insertError.message);
     else {
-      setSuccess("Saved");
+      push({ message: "Saved", type: "success" });
       onSaved?.();
       router.refresh();
     }
@@ -84,7 +84,6 @@ export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userI
           {loading ? "Saving..." : "Save entry"}
         </Button>
         <div className="flex items-center gap-3">
-          {success && <p className="text-sm text-green-600">{success}</p>}
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
       </div>

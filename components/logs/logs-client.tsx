@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { projectedRange } from "@/lib/calculations";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface LogsClientProps {
   userId: string;
@@ -23,9 +25,11 @@ const twoDecimal = (n: number) => Number(n.toFixed(2));
 export default function LogsClient({ userId, vehicles, entries, fillups, metrics, preferences }: LogsClientProps) {
   const supabase = createSupabaseBrowserClient();
   const router = useRouter();
+  const { push } = useToast();
   const [success, setSuccess] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
+  const [confirm, setConfirm] = useState<{ id: string; type: "fuel" | "odo" } | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -71,14 +75,20 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
 
   const handleDelete = async (id: string, type: "fuel" | "odo") => {
     setDeletingId(id);
-    if (type === "fuel") {
-      await supabase.from("fuel_fillups").delete().eq("id", id);
+    const { error } =
+      type === "fuel"
+        ? await supabase.from("fuel_fillups").delete().eq("id", id)
+        : await supabase.from("daily_odometer_entries").delete().eq("id", id);
+
+    if (error) {
+      push({ message: error.message, type: "error" });
     } else {
-      await supabase.from("daily_odometer_entries").delete().eq("id", id);
+      setSuccess("Deleted");
+      push({ message: "Deleted", type: "success" });
+      router.refresh();
     }
     setDeletingId(null);
-    setSuccess("Deleted");
-    router.refresh();
+    setConfirm(null);
   };
 
   return (
@@ -112,7 +122,7 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
                     <Button
                       variant="ghost"
                       disabled={deletingId === e.id}
-                      onClick={() => handleDelete(e.id, "odo")}
+                      onClick={() => setConfirm({ id: e.id, type: "odo" })}
                     >
                       {deletingId === e.id ? "Deleting..." : "Delete"}
                     </Button>
@@ -152,7 +162,7 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
                     <Button
                       variant="ghost"
                       disabled={deletingId === f.id}
-                      onClick={() => handleDelete(f.id, "fuel")}
+                      onClick={() => setConfirm({ id: f.id, type: "fuel" })}
                     >
                       {deletingId === f.id ? "Deleting..." : "Delete"}
                     </Button>
@@ -163,6 +173,15 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(confirm)}
+        title="Delete entry?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm && handleDelete(confirm.id, confirm.type)}
+        loading={Boolean(deletingId)}
+      />
     </div>
   );
 }
