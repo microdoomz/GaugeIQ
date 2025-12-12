@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   aggregateMetrics,
-  computeDistances,
   computeFuelMileage,
+  computeOdometerDistancesForRange,
   defaultRangeForTimeframe,
   filterByRange,
   projectedRange,
@@ -29,7 +29,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { format } from "date-fns";
+import { endOfDay, format, startOfDay } from "date-fns";
 import Link from "next/link";
 
 interface DashboardClientProps {
@@ -96,12 +96,12 @@ export default function DashboardClient({
 
   const filteredEntries = useMemo(
     () => filterByRange(entries, activeRange.from, activeRange.to),
-    [entries, activeRange]
+    [entries, activeRange.from, activeRange.to]
   );
 
   const filteredFillups = useMemo(
     () => filterByRange(fillups, activeRange.from, activeRange.to),
-    [fillups, activeRange]
+    [fillups, activeRange.from, activeRange.to]
   );
 
   const vehicleFilteredEntries = useMemo(
@@ -120,9 +120,53 @@ export default function DashboardClient({
     [filteredFillups, vehicleFilter]
   );
 
+  const anchorEntries = useMemo(
+    () => (vehicleFilter === "all" ? entries : entries.filter((e) => e.vehicle_id === vehicleFilter)),
+    [entries, vehicleFilter]
+  );
+
+  const anchorFillups = useMemo(
+    () => (vehicleFilter === "all" ? fillups : fillups.filter((f) => f.vehicle_id === vehicleFilter)),
+    [fillups, vehicleFilter]
+  );
+
+  const rangeBounds = useMemo(
+    () => ({ start: startOfDay(activeRange.from).getTime(), end: endOfDay(activeRange.to).getTime() }),
+    [activeRange]
+  );
+
+  const distanceReadings = useMemo(
+    () => computeOdometerDistancesForRange(anchorEntries, anchorFillups, activeRange),
+    [anchorEntries, anchorFillups, activeRange]
+  );
+
+  const todayDistance = useMemo(() => {
+    const today = new Date();
+    const todayRange = { from: startOfDay(today), to: endOfDay(today) };
+    const readings = computeOdometerDistancesForRange(anchorEntries, anchorFillups, todayRange);
+    const anchor = readings.find((r) => r.isAnchor);
+    const latestToday = [...readings].reverse().find((r) => !r.isAnchor);
+    if (!anchor || !latestToday) return null;
+    return Math.max(latestToday.odometer - anchor.odometer, 0);
+  }, [anchorEntries, anchorFillups]);
+
   const metrics = useMemo(
-    () => aggregateMetrics(vehicleFilteredEntries, vehicleFilteredFillups, vehicles),
-    [vehicleFilteredEntries, vehicleFilteredFillups, vehicles]
+    () =>
+      aggregateMetrics(vehicleFilteredEntries, vehicleFilteredFillups, vehicles, {
+        range: activeRange,
+        allEntries: anchorEntries,
+        allFillups: anchorFillups,
+      }),
+    [vehicleFilteredEntries, vehicleFilteredFillups, vehicles, activeRange, anchorEntries, anchorFillups]
+  );
+
+  const allMileageCycles = useMemo(() => computeFuelMileage(anchorFillups), [anchorFillups]);
+  const avgMileageAllFillups = useMemo(
+    () =>
+      allMileageCycles.length
+        ? allMileageCycles.reduce((sum, c) => sum + c.mileage, 0) / allMileageCycles.length
+        : 0,
+    [allMileageCycles]
   );
 
   const typicalMileageBase = useMemo(() => {
@@ -133,6 +177,7 @@ export default function DashboardClient({
   }, [vehicleFilter, vehicles]);
 
   const effectiveMileageBase = metrics.avgMileage > 0 ? metrics.avgMileage : typicalMileageBase ?? 0;
+  const effectiveMileageBaseToday = avgMileageAllFillups > 0 ? avgMileageAllFillups : effectiveMileageBase;
   const effectiveMileageDisplay = fuelFactor > 0 ? (effectiveMileageBase * distanceFactor) / fuelFactor : effectiveMileageBase;
 
   const dataMinDate = useMemo(() => {
@@ -155,15 +200,72 @@ export default function DashboardClient({
     totalCO2: metrics.totalCO2 * co2Factor,
   };
 
+  const isToday = timeframe === "today";
+
+  const todayFuelPricePerLitre = useMemo(() => {
+    const last = [...anchorFillups]
+      .filter((f) => typeof f.fuelPricePerLitre === "number" && f.fuelPricePerLitre > 0)
+      .sort((a, b) => {
+        const da = new Date(a.date).getTime();
+        const db = new Date(b.date).getTime();
+        if (da !== db) return db - da;
+        const ca = a.created_at ? new Date(a.created_at).getTime() : da;
+        const cb = b.created_at ? new Date(b.created_at).getTime() : db;
+        return cb - ca;
+      })[0];
+    if (last?.fuelPricePerLitre && last.fuelPricePerLitre > 0) return last.fuelPricePerLitre;
+    if (last && last.totalCost > 0 && last.fuelVolume > 0) return last.totalCost / last.fuelVolume;
+    return null;
+  }, [anchorFillups]);
+
+  const todayCO2Factor = useMemo(() => {
+    const last = [...anchorFillups]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const veh = vehicles.find((v) => v.id === last?.vehicle_id);
+    if (veh?.fuelType === "diesel") return 2.7;
+    if (veh?.fuelType === "petrol") return 2.3;
+    return 2.3;
+  }, [anchorFillups, vehicles]);
+
+  const todayFuelConsumed = useMemo(() => {
+    if (!isToday) return null;
+    if (todayDistance === null) return null;
+    if (effectiveMileageBaseToday <= 0) return null;
+    return todayDistance / effectiveMileageBaseToday;
+  }, [isToday, todayDistance, effectiveMileageBaseToday]);
+
+  const todayMoneySpent = useMemo(() => {
+    if (!isToday) return null;
+    if (todayFuelConsumed == null) return null;
+    if (!todayFuelPricePerLitre || todayFuelPricePerLitre <= 0) return null;
+    return todayFuelConsumed * todayFuelPricePerLitre;
+  }, [isToday, todayFuelConsumed, todayFuelPricePerLitre]);
+
+  const todayCO2 = useMemo(() => {
+    if (!isToday) return null;
+    if (todayFuelConsumed == null) return null;
+    return todayFuelConsumed * todayCO2Factor;
+  }, [isToday, todayFuelConsumed, todayCO2Factor]);
+
   const fmtDistance = (v: number) => oneDecimal(v * distanceFactor);
   const fmtFuel = (v: number) => oneDecimal(v * fuelFactor);
 
-  const distances = useMemo(() => computeDistances(vehicleFilteredEntries), [vehicleFilteredEntries]);
-  const distanceSeries = distances.map((e) => ({
-    date: e.date,
-    km: (e.distanceSincePrev ?? 0) * distanceFactor,
-    vehicle: vehicles.find((v) => v.id === e.vehicle_id)?.model ?? "Vehicle",
-  }));
+  const distanceSeries = useMemo(
+    () =>
+      distanceReadings
+        .filter(
+          (r) =>
+            !r.isAnchor &&
+            new Date(r.date).getTime() >= rangeBounds.start &&
+            new Date(r.date).getTime() <= rangeBounds.end
+        )
+        .map((r) => ({
+          date: r.date,
+          km: (r.distanceSincePrev ?? 0) * distanceFactor,
+          vehicle: vehicles.find((v) => v.id === r.vehicle_id)?.model ?? "Vehicle",
+        })),
+    [distanceReadings, rangeBounds.start, rangeBounds.end, distanceFactor, vehicles]
+  );
 
   const mileageCycles = useMemo(() => computeFuelMileage(vehicleFilteredFillups), [vehicleFilteredFillups]);
 
@@ -254,15 +356,18 @@ export default function DashboardClient({
 
   const distanceByVehicle = useMemo(() => {
     const map = new Map<string, number>();
-    computeDistances(vehicleFilteredEntries).forEach((e) => {
-      map.set(e.vehicle_id, (map.get(e.vehicle_id) ?? 0) + (e.distanceSincePrev ?? 0) * distanceFactor);
+    distanceReadings.forEach((r) => {
+      if (r.isAnchor) return;
+      const ts = new Date(r.date).getTime();
+      if (ts < rangeBounds.start || ts > rangeBounds.end) return;
+      map.set(r.vehicle_id, (map.get(r.vehicle_id) ?? 0) + (r.distanceSincePrev ?? 0) * distanceFactor);
     });
     return Array.from(map.entries()).map(([vehicle_id, distance]) => ({
       vehicle_id,
       vehicle: vehicles.find((v) => v.id === vehicle_id)?.model ?? "Vehicle",
       distance,
     }));
-  }, [vehicleFilteredEntries, vehicles, distanceFactor]);
+  }, [distanceReadings, rangeBounds.start, rangeBounds.end, vehicles, distanceFactor]);
 
   const vehicleComparisons = useMemo(() => {
     return vehicles.map((v) => {
@@ -342,14 +447,68 @@ export default function DashboardClient({
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Distance travelled" value={`${oneDecimal(displayMetrics.totalKm)} ${distanceUnitLabel}`} hint={`${daysInRange} days`} />
+        <StatCard
+          title="Distance travelled"
+          value={
+            isToday
+              ? todayDistance !== null
+                ? `${oneDecimal(todayDistance * distanceFactor)} ${distanceUnitLabel}`
+                : "—"
+              : `${oneDecimal(displayMetrics.totalKm)} ${distanceUnitLabel}`
+          }
+          hint={isToday ? (todayDistance === null ? "No readings found for today" : "Today only") : `${daysInRange} days`}
+        />
         <StatCard
           title="Fuel consumed"
-          value={`${oneDecimal(displayMetrics.totalFuel)} ${fuelUnitLabel}`}
-          hint={metrics.avgMileage ? `${oneDecimal(displayMetrics.avgMileage)} ${distanceUnitLabel}/${fuelUnitLabel} avg` : "Need more fill-ups"}
+          value={
+            isToday
+              ? todayFuelConsumed != null
+                ? `${oneDecimal(todayFuelConsumed * fuelFactor)} ${fuelUnitLabel}`
+                : "—"
+              : `${oneDecimal(displayMetrics.totalFuel)} ${fuelUnitLabel}`
+          }
+          hint={
+            isToday
+              ? todayDistance === null
+                ? "No readings found for today"
+                : effectiveMileageBaseToday > 0
+                ? `${oneDecimal((effectiveMileageBaseToday * distanceFactor) / fuelFactor)} ${distanceUnitLabel}/${fuelUnitLabel} avg`
+                : "Need mileage data"
+              : metrics.avgMileage
+              ? `${oneDecimal(displayMetrics.avgMileage)} ${distanceUnitLabel}/${fuelUnitLabel} avg`
+              : "Need more fill-ups"
+          }
         />
-        <StatCard title="Money spent" value={currencyFmt.format(metrics.totalCost)} hint={`${currencyFmt.format(projectedMonthlyCost)} / month projected`} />
-        <StatCard title="Emissions" value={`${oneDecimal(displayMetrics.totalCO2)} ${co2UnitLabel} CO₂`} hint="Based on fuel mix" />
+        <StatCard
+          title="Money spent"
+          value={
+            isToday
+              ? todayMoneySpent != null
+                ? currencyFmt.format(todayMoneySpent)
+                : "—"
+              : currencyFmt.format(metrics.totalCost)
+          }
+          hint={
+            isToday
+              ? todayDistance === null
+                ? "No readings found for today"
+                : todayFuelPricePerLitre
+                ? `@ ${currencyFmt.format(todayFuelPricePerLitre)} / ${fuelUnitLabel}`
+                : "Need fuel price"
+              : `${currencyFmt.format(projectedMonthlyCost)} / month projected`
+          }
+        />
+        <StatCard
+          title="Emissions"
+          value={
+            isToday
+              ? todayCO2 != null
+                ? `${oneDecimal(todayCO2 * co2Factor)} ${co2UnitLabel} CO₂`
+                : "—"
+              : `${oneDecimal(displayMetrics.totalCO2)} ${co2UnitLabel} CO₂`
+          }
+          hint={isToday ? "Today only" : "Based on fuel mix"}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

@@ -7,6 +7,17 @@ const CO2_FACTORS: Record<string, number> = {
   default: 2.3,
 };
 
+export interface OdometerDistancePoint {
+  id: string;
+  vehicle_id: string;
+  date: string;
+  odometer: number;
+  source: "entry" | "fillup";
+  created_at?: string;
+  isAnchor?: boolean;
+  distanceSincePrev: number;
+}
+
 export const computeTripEstimates = ({
   startOdometer,
   endOdometer,
@@ -39,6 +50,97 @@ export interface DashboardMetrics {
   bestMileageMonth?: string;
   mostTravelledMonth?: string;
 }
+
+const sortReadings = (
+  a: { date: string; created_at?: string; id?: string },
+  b: { date: string; created_at?: string; id?: string }
+) => {
+  const da = new Date(a.date).getTime();
+  const db = new Date(b.date).getTime();
+  if (da !== db) return da - db;
+  const ca = a.created_at ? new Date(a.created_at).getTime() : da;
+  const cb = b.created_at ? new Date(b.created_at).getTime() : db;
+  if (ca !== cb) return ca - cb;
+  if (a.id && b.id) return a.id.localeCompare(b.id);
+  return 0;
+};
+
+const buildCombinedReadings = (entries: DailyOdometerEntry[], fillups: FuelFillUp[]) => {
+  const readings: Array<{
+    id: string;
+    vehicle_id: string;
+    date: string;
+    odometer: number;
+    source: "entry" | "fillup";
+    created_at?: string;
+  }> = [];
+
+  entries.forEach((e) => {
+    if (typeof e.odometerReading === "number") {
+      readings.push({
+        id: e.id,
+        vehicle_id: e.vehicle_id,
+        date: e.date,
+        odometer: e.odometerReading,
+        source: "entry",
+        created_at: e.created_at,
+      });
+    }
+  });
+
+  fillups.forEach((f) => {
+    if (typeof f.odometerAtFill === "number") {
+      readings.push({
+        id: `fill-${f.id}`,
+        vehicle_id: f.vehicle_id,
+        date: f.date,
+        odometer: f.odometerAtFill,
+        source: "fillup",
+        created_at: f.created_at,
+      });
+    }
+  });
+
+  return readings;
+};
+
+export const computeOdometerDistancesForRange = (
+  entries: DailyOdometerEntry[],
+  fillups: FuelFillUp[],
+  range: { from: Date; to: Date }
+) => {
+  const start = startOfDay(range.from).getTime();
+  const end = endOfDay(range.to).getTime();
+  const combined = buildCombinedReadings(entries, fillups);
+
+  const byVehicle = new Map<string, typeof combined>();
+  combined.forEach((r) => {
+    byVehicle.set(r.vehicle_id, [...(byVehicle.get(r.vehicle_id) ?? []), r]);
+  });
+
+  const result: OdometerDistancePoint[] = [];
+
+  byVehicle.forEach((list) => {
+    const sorted = [...list].sort(sortReadings);
+    const anchor = sorted.filter((r) => new Date(r.date).getTime() < start).pop();
+    const inRange = sorted.filter((r) => {
+      const t = new Date(r.date).getTime();
+      return t >= start && t <= end;
+    });
+    if (!anchor && !inRange.length) return;
+    const series = [...(anchor ? [{ ...anchor, isAnchor: true }] : []), ...inRange];
+
+    let prev: typeof series[number] | undefined;
+    series.forEach((r) => {
+      const prevIsAnchor = Boolean((prev as any)?.isAnchor);
+      const distance = prev ? (prevIsAnchor ? 0 : Math.max(r.odometer - prev.odometer, 0)) : 0;
+      result.push({ ...r, distanceSincePrev: distance });
+      prev = r;
+    });
+  });
+
+  return result.sort(sortReadings);
+};
 
 export const computeDistances = (entries: DailyOdometerEntry[]) => {
   const byVehicle = new Map<string, DailyOdometerEntry[]>();
@@ -84,8 +186,27 @@ export const computeFuelMileage = (fillups: FuelFillUp[]) => {
 export const aggregateMetrics = (
   entries: DailyOdometerEntry[],
   fillups: FuelFillUp[],
-  vehicles: Vehicle[]
+  vehicles: Vehicle[],
+  options?: {
+    range?: { from: Date; to: Date };
+    allEntries?: DailyOdometerEntry[];
+    allFillups?: FuelFillUp[];
+  }
 ): DashboardMetrics => {
+  const distanceEntries = options?.allEntries ?? entries;
+  const distanceFillups = options?.allFillups ?? fillups;
+
+  const combinedDates = [
+    ...distanceEntries.map((e) => new Date(e.date).getTime()),
+    ...distanceFillups.map((f) => new Date(f.date).getTime()),
+  ].filter((t) => Number.isFinite(t));
+  const fallbackFrom = combinedDates.length ? new Date(Math.min(...combinedDates)) : new Date("1970-01-01");
+  const fallbackTo = combinedDates.length ? new Date(Math.max(...combinedDates)) : new Date();
+  const distanceRange = options?.range ?? { from: fallbackFrom, to: fallbackTo };
+
+  const distanceReadings = computeOdometerDistancesForRange(distanceEntries, distanceFillups, distanceRange);
+  const totalKmFromReadings = distanceReadings.reduce((sum, r) => sum + (r.distanceSincePrev ?? 0), 0);
+
   // Per-vehicle distance calculations within the provided (already filtered) entries.
   const withDistances = computeDistances(entries);
 
@@ -128,7 +249,7 @@ export const aggregateMetrics = (
     return sum + (Math.max(...readings) - Math.min(...readings));
   }, 0);
 
-  const totalKm = Math.max(totalKmFromDeltas, spanKmFromEntries, spanKmFromFillups, spanKmCombined);
+  const totalKm = Math.max(totalKmFromReadings, totalKmFromDeltas, spanKmFromEntries, spanKmFromFillups, spanKmCombined);
   const totalFuel = fillups.reduce((sum, f) => sum + f.fuelVolume, 0);
   const totalCost = fillups.reduce((sum, f) => sum + f.totalCost, 0);
 
