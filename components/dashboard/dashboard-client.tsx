@@ -7,7 +7,7 @@ import {
   computeOdometerDistancesForRange,
   defaultRangeForTimeframe,
   filterByRange,
-  projectedRange,
+  computeSmartProjection,
   unifiedHistory,
 } from "@/lib/calculations";
 import { DailyOdometerEntry, FuelFillUp, HistoryItem, Timeframe, Vehicle, UserPreferences } from "@/lib/types";
@@ -160,14 +160,8 @@ export default function DashboardClient({
     [vehicleFilteredEntries, vehicleFilteredFillups, vehicles, activeRange, anchorEntries, anchorFillups]
   );
 
-  const allMileageCycles = useMemo(() => computeFuelMileage(anchorFillups), [anchorFillups]);
-  const avgMileageAllFillups = useMemo(
-    () =>
-      allMileageCycles.length
-        ? allMileageCycles.reduce((sum, c) => sum + c.mileage, 0) / allMileageCycles.length
-        : 0,
-    [allMileageCycles]
-  );
+  const allMileageResult = useMemo(() => computeFuelMileage(anchorFillups), [anchorFillups]);
+  const avgMileageAllFillups = allMileageResult.weightedAvgMileage;
 
   const typicalMileageBase = useMemo(() => {
     const candidates = vehicleFilter === "all" ? vehicles : vehicles.filter((v) => v.id === vehicleFilter);
@@ -267,7 +261,7 @@ export default function DashboardClient({
     [distanceReadings, rangeBounds.start, rangeBounds.end, distanceFactor, vehicles]
   );
 
-  const mileageCycles = useMemo(() => computeFuelMileage(vehicleFilteredFillups), [vehicleFilteredFillups]);
+  const mileageCycles = useMemo(() => computeFuelMileage(vehicleFilteredFillups).cycles, [vehicleFilteredFillups]);
 
   const mileageCyclesDisplay = useMemo(
     () =>
@@ -334,25 +328,41 @@ export default function DashboardClient({
   const projectedMonthlyFuelDisplay = projectedMonthlyFuelLitres * fuelFactor;
   const projectedMonthlyEmissionsDisplay = projectedMonthlyEmissionsKg * co2Factor;
 
-  const lastFill = [...vehicleFilteredFillups]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-  const rangeFromLastFill = projectedRange(
-    effectiveMileageDisplay,
-    (lastFill?.fuelVolume ?? 0) * fuelFactor,
-    avgDailyDistance * distanceFactor
-  );
+  const smartProjection = useMemo(() => {
+    return computeSmartProjection({
+      fillups: vehicleFilteredFillups,
+      entries: vehicleFilteredEntries,
+      vehicles,
+    });
+  }, [vehicleFilteredFillups, vehicleFilteredEntries, vehicles]);
 
+  const todayIso = new Date().toISOString().slice(0, 10);
   const avgFillVolume = vehicleFilteredFillups.length
     ? vehicleFilteredFillups.reduce((sum, f) => sum + f.fuelVolume, 0) / vehicleFilteredFillups.length
     : 0;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const lastFill = [...vehicleFilteredFillups]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
   const todaysFill = vehicleFilteredFillups.find((f) => f.date === todayIso);
   const assumedFillVolume = todaysFill?.fuelVolume ?? (avgFillVolume > 0 ? avgFillVolume : lastFill?.fuelVolume ?? 0);
-  const fillTodayRange = projectedRange(
-    effectiveMileageDisplay,
-    (assumedFillVolume ?? 0) * fuelFactor,
-    avgDailyDistance * distanceFactor
-  );
+
+  const smartProjectionToday = useMemo(() => {
+    // If they filled today, project from now
+    return computeSmartProjection({
+      fillups: vehicleFilteredFillups.length ? [...vehicleFilteredFillups, {
+        id: "simulated",
+        user_id: "",
+        vehicle_id: vehicles[0]?.id ?? "",
+        date: todayIso,
+        odometerAtFill: distanceReadings.length ? distanceReadings[distanceReadings.length - 1].odometer : 0,
+        fuelVolume: assumedFillVolume,
+        totalCost: assumedFillVolume * (todayFuelPricePerLitre ?? 0),
+        isFullTank: true,
+        created_at: new Date().toISOString(),
+      }] : [],
+      entries: vehicleFilteredEntries,
+      vehicles,
+    });
+  }, [vehicleFilteredFillups, vehicleFilteredEntries, vehicles, todayIso, distanceReadings, assumedFillVolume, todayFuelPricePerLitre]);
 
   const distanceByVehicle = useMemo(() => {
     const map = new Map<string, number>();
@@ -373,7 +383,7 @@ export default function DashboardClient({
     return vehicles.map((v) => {
       const vFillups = filteredFillups.filter((f) => f.vehicle_id === v.id);
       const cycles = computeFuelMileage(vFillups);
-      const avgMileage = cycles.length ? cycles.reduce((s, c) => s + c.mileage, 0) / cycles.length : 0;
+      const avgMileage = cycles.weightedAvgMileage;
       return {
         id: v.id,
         name: `${v.make} ${v.model}`,
@@ -475,7 +485,7 @@ export default function DashboardClient({
                 ? `${oneDecimal((effectiveMileageBaseToday * distanceFactor) / fuelFactor)} ${distanceUnitLabel}/${fuelUnitLabel} avg`
                 : "Need mileage data"
               : metrics.avgMileage
-              ? `${oneDecimal(displayMetrics.avgMileage)} ${distanceUnitLabel}/${fuelUnitLabel} avg`
+              ? `${oneDecimal(displayMetrics.avgMileage)} ± ${oneDecimal((metrics.mileageStdDev * distanceFactor) / fuelFactor)} ${distanceUnitLabel}/${fuelUnitLabel}`
               : "Need more fill-ups"
           }
         />
@@ -594,20 +604,32 @@ export default function DashboardClient({
             <p className="text-sm font-medium">Projections</p>
             <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
               <div>
-                <p className="text-[hsl(var(--foreground))]/70">Range from last fill</p>
-                {effectiveMileageDisplay > 0 && (lastFill?.fuelVolume ?? 0) > 0 ? (
-                  <p className="text-lg font-semibold">{fmtDistance(rangeFromLastFill.km)} {distanceUnitLabel} · ~{rangeFromLastFill.days} days</p>
+                <div className="flex justify-between items-center pr-2">
+                  <p className="text-[hsl(var(--foreground))]/70">Remaining range</p>
+                  {smartProjection?.tankPercent !== null && smartProjection?.tankPercent !== undefined && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]">
+                      ~{smartProjection.tankPercent}% full
+                    </span>
+                  )}
+                </div>
+                {smartProjection ? (
+                  <>
+                    <p className="text-lg font-semibold">{fmtDistance(smartProjection.remainingKm)} {distanceUnitLabel} · ~{smartProjection.remainingDays} days</p>
+                    <p className="text-[hsl(var(--foreground))]/60">
+                      Est. {fmtFuel(smartProjection.remainingFuelL)} {fuelUnitLabel} left in tank.
+                    </p>
+                  </>
                 ) : (
                   <p className="text-[hsl(var(--foreground))]/60">Add a fill-up and odometer entries to project range.</p>
                 )}
               </div>
               <div>
                 <p className="text-[hsl(var(--foreground))]/70">If you fill today</p>
-                {effectiveMileageDisplay > 0 && assumedFillVolume > 0 ? (
+                {smartProjectionToday ? (
                   <>
-                    <p className="text-lg font-semibold">{fmtDistance(fillTodayRange.km)} {distanceUnitLabel} · ~{fillTodayRange.days} days</p>
+                    <p className="text-lg font-semibold">{fmtDistance(smartProjectionToday.remainingKm)} {distanceUnitLabel} · ~{smartProjectionToday.remainingDays} days</p>
                     <p className="text-[hsl(var(--foreground))]/60">
-                      Assumes {fmtFuel(assumedFillVolume)} {fuelUnitLabel} using recent average mileage.
+                      Assumes {fmtFuel(assumedFillVolume)} {fuelUnitLabel} using recent EWMA mileage.
                     </p>
                   </>
                 ) : (
@@ -694,7 +716,7 @@ export default function DashboardClient({
                   <p className="font-medium">
                     {item.vehicleName} ·
                     {item.type === "fuel"
-                      ? ` ${fmtFuel((item as any).fuelVolume)} ${fuelUnitLabel}`
+                      ? ` ${(item as any).isFullTank ? "⛽ Full" : "💧 Partial"} · ${fmtFuel((item as any).fuelVolume)} ${fuelUnitLabel}`
                       : ` ${fmtDistance((item as any).odometerReading)} ${distanceUnitLabel}`}
                   </p>
                   <p className="text-[hsl(var(--foreground))]/70">

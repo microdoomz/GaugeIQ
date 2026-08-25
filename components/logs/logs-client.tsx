@@ -6,7 +6,7 @@ import { OdometerForm } from "@/components/forms/odometer-form";
 import { DailyOdometerEntry, FuelFillUp, Vehicle, UserPreferences } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { projectedRange } from "@/lib/calculations";
+import { computeSmartProjection } from "@/lib/calculations";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -62,10 +62,13 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
     return distance / days;
   }, [entries]);
 
-  const longevity = useMemo(() => {
-    const fuelLitres = latestFill?.fuelVolume ?? 0;
-    return projectedRange(metrics.avgMileage, fuelLitres, avgDailyDistance);
-  }, [latestFill, metrics.avgMileage, avgDailyDistance]);
+  const smartProjection = useMemo(() => {
+    return computeSmartProjection({
+      fillups,
+      entries,
+      vehicles,
+    });
+  }, [fillups, entries, vehicles]);
 
   useEffect(() => {
     const handler = () => router.refresh();
@@ -142,10 +145,20 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
 
           <div className="pt-2 border-t border-[hsl(var(--border))] space-y-2">
             <h3 className="text-sm font-semibold mb-1 text-center">Recent fuel fill-ups</h3>
-            {latestFill && metrics.avgMileage > 0 && (
+            {latestFill && smartProjection && (
               <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/30 px-3 py-2 text-sm text-center">
-                <p className="font-medium">This fill-up projected</p>
-                <p className="text-[hsl(var(--foreground))]/80">~{fmtDistance(longevity.km)} {distanceUnitLabel} · ~{longevity.days} days</p>
+                <div className="flex justify-between items-center mb-1">
+                  <p className="font-medium text-xs uppercase tracking-wider">Remaining</p>
+                  {smartProjection.tankPercent !== null && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]">
+                      ~{smartProjection.tankPercent}% full
+                    </span>
+                  )}
+                </div>
+                <p className="text-lg font-semibold">{fmtDistance(smartProjection.remainingKm)} {distanceUnitLabel} <span className="text-base font-normal text-[hsl(var(--foreground))]/70">/ ~{smartProjection.remainingDays} days</span></p>
+                <p className="text-xs text-[hsl(var(--foreground))]/60 mt-1">
+                  Est. {fmtFuel(smartProjection.remainingFuelL)} {fuelUnitLabel} left
+                </p>
               </div>
             )}
             <div className="space-y-2 max-h-64 overflow-auto">
@@ -156,7 +169,7 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
                 .map((f) => (
                   <div key={f.id} className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] px-3 py-2 text-sm">
                     <span>
-                      {f.date} · {fmtFuel(f.fuelVolume)} {fuelUnitLabel} · {currencyFmt.format(f.totalCost)} ·
+                      {f.date} · {f.isFullTank ? "⛽ Full" : "💧 Partial"} · {fmtFuel(f.fuelVolume)} {fuelUnitLabel} · {currencyFmt.format(f.totalCost)} ·
                       Odo {fmtDistance(f.odometerAtFill)} {distanceUnitLabel}
                     </span>
                     <Button

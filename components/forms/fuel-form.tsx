@@ -28,6 +28,7 @@ export const FuelForm = ({ userId, vehicles, onSaved, preferences }: { userId: s
     const fuelVolume = Number(formData.get("fuelVolume"));
     const totalCost = Number(formData.get("totalCost"));
     const fuelPricePerLitre = fuelVolume ? totalCost / fuelVolume : null;
+    const isFullTank = formData.get("isFullTank") === "on";
     const stationName = String(formData.get("stationName") || "") || null;
     const notes = String(formData.get("notes") || "") || null;
 
@@ -55,6 +56,7 @@ export const FuelForm = ({ userId, vehicles, onSaved, preferences }: { userId: s
       fuelVolume,
       totalCost,
       fuelPricePerLitre,
+      isFullTank,
       stationName,
       notes,
     });
@@ -90,6 +92,11 @@ export const FuelForm = ({ userId, vehicles, onSaved, preferences }: { userId: s
       <Input name="fuelVolume" label={`Fuel volume (${fuelUnitLabel})`} type="number" step="0.01" required min={0} />
       <Input name="totalCost" label="Total cost" type="number" step="0.01" required min={0} />
       <Input name="stationName" label="Station name" placeholder="Optional" />
+      <div className="flex items-center gap-2 text-sm pt-2 md:col-span-2">
+        <input type="checkbox" id="isFullTank" name="isFullTank" defaultChecked className="rounded border-[hsl(var(--border))] text-[hsl(var(--primary))]" />
+        <label htmlFor="isFullTank" className="font-medium">Full Tank</label>
+        <p className="text-xs text-[hsl(var(--foreground))]/60 ml-2">Uncheck if this is just a partial top-up</p>
+      </div>
       <Textarea name="notes" label="Notes" placeholder="Optional" className="md:col-span-2" />
       <div className="md:col-span-2 flex items-center justify-between">
         <Button type="submit" disabled={loading}>

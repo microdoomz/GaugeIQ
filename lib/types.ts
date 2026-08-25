@@ -11,6 +11,7 @@ export interface Vehicle {
   year: number;
   fuelType: FuelType;
   typicalMileage?: number | null;
+  tankCapacity?: number | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ export interface FuelFillUp {
   totalCost: number;
   fuelPricePerLitre?: number | null;
   stationName?: string | null;
+  isFullTank: boolean;
   notes?: string | null;
   created_at: string;
 }
@@ -84,6 +86,7 @@ export interface HistoryFuelItem extends HistoryItemBase {
   fuelPricePerLitre?: number | null;
   odometerAtFill: number;
   stationName?: string | null;
+  isFullTank: boolean;
   mileageForCycle?: number;
 }
 

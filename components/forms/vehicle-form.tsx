@@ -1,7 +1,7 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { lookupTypicalMileage } from "@/lib/typicalMileage";
+import { lookupTypicalMileage, lookupTypicalTankCapacity } from "@/lib/typicalMileage";
 import { FuelType, VehicleType } from "@/lib/types";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,10 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
     const fuelType = String(formData.get("fuelType") || "petrol") as FuelType;
     const variant = String(formData.get("variant") || "") || null;
     const typicalMileage = lookupTypicalMileage(make, model, year) ?? null;
+    let tankCapacity = formData.get("tankCapacity") ? Number(formData.get("tankCapacity")) : null;
+    if (!tankCapacity) {
+      tankCapacity = lookupTypicalTankCapacity(make, model, year) ?? null;
+    }
 
     const { error: insertError } = await supabase.from("vehicles").insert({
       user_id: userId,
@@ -36,6 +40,7 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
       fuelType,
       variant,
       typicalMileage,
+      tankCapacity,
     });
     if (insertError) {
       setError(insertError.message);
@@ -53,6 +58,7 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
       <Input name="model" label="Model" placeholder="Corolla" required />
       <Input name="variant" label="Variant" placeholder="Hybrid" />
       <Input name="year" label="Year" type="number" required min={1950} max={2100} />
+      <Input name="tankCapacity" label="Tank capacity (Litres)" type="number" step="0.1" min={0} placeholder="Auto-estimated if blank" />
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium">Vehicle type</span>
