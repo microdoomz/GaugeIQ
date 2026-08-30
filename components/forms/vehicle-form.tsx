@@ -2,14 +2,14 @@
 
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { lookupTypicalMileage, lookupTypicalTankCapacity } from "@/lib/typicalMileage";
-import { FuelType, VehicleType } from "@/lib/types";
+import { FuelType, VehicleType, Vehicle } from "@/lib/types";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/toast";
 
-export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?: () => void }) => {
+export const VehicleForm = ({ userId, onCreated, initialData, onCancel }: { userId: string; onCreated?: () => void; initialData?: Vehicle; onCancel?: () => void }) => {
   const supabase = createSupabaseBrowserClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
       tankCapacity = lookupTypicalTankCapacity(make, model, year) ?? null;
     }
 
-    const { error: insertError } = await supabase.from("vehicles").insert({
+    const dataToSave = {
       user_id: userId,
       make,
       model,
@@ -41,9 +41,19 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
       variant,
       typicalMileage,
       tankCapacity,
-    });
-    if (insertError) {
-      setError(insertError.message);
+    };
+
+    let dbError;
+    if (initialData?.id) {
+      const { error } = await supabase.from("vehicles").update(dataToSave).eq("id", initialData.id);
+      dbError = error;
+    } else {
+      const { error } = await supabase.from("vehicles").insert(dataToSave);
+      dbError = error;
+    }
+
+    if (dbError) {
+      setError(dbError.message);
     } else {
       push({ message: "Saved", type: "success" });
       onCreated?.();
@@ -54,18 +64,18 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
 
   return (
     <form action={handleSubmit} className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <Input name="make" label="Make" placeholder="Toyota" required />
-      <Input name="model" label="Model" placeholder="Corolla" required />
-      <Input name="variant" label="Variant" placeholder="Hybrid" />
-      <Input name="year" label="Year" type="number" required min={1950} max={2100} />
-      <Input name="tankCapacity" label="Tank capacity (Litres)" type="number" step="0.1" min={0} placeholder="Auto-estimated if blank" />
+      <Input name="make" label="Make" placeholder="Toyota" required defaultValue={initialData?.make} />
+      <Input name="model" label="Model" placeholder="Corolla" required defaultValue={initialData?.model} />
+      <Input name="variant" label="Variant" placeholder="Hybrid" defaultValue={initialData?.variant || ""} />
+      <Input name="year" label="Year" type="number" required min={1950} max={2100} defaultValue={initialData?.year} />
+      <Input name="tankCapacity" label="Tank capacity (Litres)" type="number" step="0.1" min={0} placeholder="Auto-estimated if blank" defaultValue={initialData?.tankCapacity || ""} />
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium">Vehicle type</span>
         <select
           name="vehicleType"
           className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-sm"
-          defaultValue="car"
+          defaultValue={initialData?.vehicleType || "car"}
         >
           <option value="car">Car</option>
           <option value="scooter">Scooter</option>
@@ -82,7 +92,7 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
         <select
           name="fuelType"
           className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-sm"
-          defaultValue="petrol"
+          defaultValue={initialData?.fuelType || "petrol"}
         >
           <option value="petrol">Petrol</option>
           <option value="diesel">Diesel</option>
@@ -94,9 +104,16 @@ export const VehicleForm = ({ userId, onCreated }: { userId: string; onCreated?:
       </label>
 
       <div className="md:col-span-2 flex items-center justify-between gap-3">
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Save vehicle"}
-        </Button>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={loading}>
+            {loading ? "Saving..." : "Save vehicle"}
+          </Button>
+          {onCancel && (
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={loading}>
+              Cancel
+            </Button>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           {error && <p className="text-sm text-red-500">{error}</p>}
         </div>

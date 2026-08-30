@@ -13,6 +13,7 @@ export const FuelForm = ({ userId, vehicles, onSaved, preferences }: { userId: s
   const supabase = createSupabaseBrowserClient();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isFullTank, setIsFullTank] = useState(false);
   const router = useRouter();
   const { push } = useToast();
 
@@ -92,10 +93,29 @@ export const FuelForm = ({ userId, vehicles, onSaved, preferences }: { userId: s
       <Input name="fuelVolume" label={`Fuel volume (${fuelUnitLabel})`} type="number" step="0.01" required min={0} />
       <Input name="totalCost" label="Total cost" type="number" step="0.01" required min={0} />
       <Input name="stationName" label="Station name" placeholder="Optional" />
-      <div className="flex items-center gap-2 text-sm pt-2 md:col-span-2">
-        <input type="checkbox" id="isFullTank" name="isFullTank" defaultChecked className="rounded border-[hsl(var(--border))] text-[hsl(var(--primary))]" />
-        <label htmlFor="isFullTank" className="font-medium">Full Tank</label>
-        <p className="text-xs text-[hsl(var(--foreground))]/60 ml-2">Uncheck if this is just a partial top-up</p>
+      <div className="flex items-center gap-3 pt-2 md:col-span-2">
+        <button
+          type="button"
+          onClick={() => setIsFullTank(!isFullTank)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            isFullTank ? "bg-[hsl(var(--primary))]" : "bg-[hsl(var(--muted))]"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              isFullTank ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+        <input type="hidden" name="isFullTank" value={isFullTank ? "on" : "off"} />
+        <div>
+          <label className="font-medium cursor-pointer" onClick={() => setIsFullTank(!isFullTank)}>
+            Full Tank
+          </label>
+          <p className="text-xs text-[hsl(var(--foreground))]/60">
+            {isFullTank ? "Recording as a complete fill-up" : "Recording as a partial top-up"}
+          </p>
+        </div>
       </div>
       <Textarea name="notes" label="Notes" placeholder="Optional" className="md:col-span-2" />
       <div className="md:col-span-2 flex items-center justify-between">

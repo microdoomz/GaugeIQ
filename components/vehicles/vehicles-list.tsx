@@ -7,6 +7,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useToast } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { VehicleForm } from "@/components/forms/vehicle-form";
 
 interface VehiclesListProps {
   vehicles: Vehicle[];
@@ -21,6 +22,7 @@ export function VehiclesList({ vehicles, distanceFactor, fuelFactor, mileageUnit
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -41,31 +43,55 @@ export function VehiclesList({ vehicles, distanceFactor, fuelFactor, mileageUnit
 
   return (
     <div className="divide-y divide-[hsl(var(--border))] text-sm">
-      {vehicles.map((v) => (
-        <div key={v.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <div>
-            <p className="font-medium">{v.make} {v.model} {v.variant ? `· ${v.variant}` : ""}</p>
-            <p className="text-[hsl(var(--foreground))]/70">{v.year} · {v.vehicleType} · {v.fuelType}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-[hsl(var(--foreground))]/70">Typical mileage</p>
-              <p className="font-semibold">
-                {v.typicalMileage
-                  ? `${((v.typicalMileage * distanceFactor) / (fuelFactor || 1)).toFixed(1)} ${mileageUnitLabel}`
-                  : "—"}
+      {vehicles.map((v) => {
+        if (editId === v.id) {
+          return (
+            <div key={v.id} className="py-4">
+              <VehicleForm
+                userId={v.user_id}
+                initialData={v}
+                onCreated={() => setEditId(null)}
+                onCancel={() => setEditId(null)}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div key={v.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div>
+              <p className="font-medium">{v.make} {v.model} {v.variant ? `· ${v.variant}` : ""}</p>
+              <p className="text-[hsl(var(--foreground))]/70">{v.year} · {v.vehicleType} · {v.fuelType}</p>
+              <p className="text-[hsl(var(--foreground))]/70 mt-1">
+                Tank: {v.tankCapacity ? `${v.tankCapacity}L` : "Unknown"}
               </p>
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => setConfirmId(v.id)}
-              disabled={deletingId === v.id}
-            >
-              {deletingId === v.id ? "Deleting..." : "Delete"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-[hsl(var(--foreground))]/70">Typical mileage</p>
+                <p className="font-semibold">
+                  {v.typicalMileage
+                    ? `${((v.typicalMileage * distanceFactor) / (fuelFactor || 1)).toFixed(1)} ${mileageUnitLabel}`
+                    : "—"}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => setEditId(v.id)}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmId(v.id)}
+                disabled={deletingId === v.id}
+              >
+                {deletingId === v.id ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <ConfirmDialog
         open={Boolean(confirmId)}
         title="Delete vehicle?"

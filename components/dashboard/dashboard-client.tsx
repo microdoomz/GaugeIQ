@@ -485,7 +485,7 @@ export default function DashboardClient({
                 ? `${oneDecimal((effectiveMileageBaseToday * distanceFactor) / fuelFactor)} ${distanceUnitLabel}/${fuelUnitLabel} avg`
                 : "Need mileage data"
               : metrics.avgMileage
-              ? `${oneDecimal(displayMetrics.avgMileage)} ± ${oneDecimal((metrics.mileageStdDev * distanceFactor) / fuelFactor)} ${distanceUnitLabel}/${fuelUnitLabel}`
+              ? `${oneDecimal(displayMetrics.avgMileage)} ${distanceUnitLabel}/${fuelUnitLabel}`
               : "Need more fill-ups"
           }
         />
@@ -519,6 +519,42 @@ export default function DashboardClient({
           }
           hint={isToday ? "Today only" : "Based on fuel mix"}
         />
+      </div>
+
+      <div className="glass-card p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <p className="text-sm font-medium">Fuel Status</p>
+            <p className="text-xs text-[hsl(var(--foreground))]/70">Estimated from recent mileage and tank capacity</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-6 md:gap-10">
+            <div>
+              <p className="text-[hsl(var(--foreground))]/70 text-xs uppercase tracking-wider mb-1">Fuel left</p>
+              <p className="text-xl font-semibold">
+                {smartProjection ? `${fmtFuel(smartProjection.remainingFuelL)} ${fuelUnitLabel}` : "—"}
+                {smartProjection?.tankPercent != null && (
+                  <span className="ml-2 text-sm font-normal text-[hsl(var(--foreground))]/60">
+                    (~{smartProjection.tankPercent}%)
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="h-10 w-px bg-[hsl(var(--border))] hidden md:block"></div>
+            <div>
+              <p className="text-[hsl(var(--foreground))]/70 text-xs uppercase tracking-wider mb-1">Distance left</p>
+              <p className="text-xl font-semibold">
+                {smartProjection ? `${fmtDistance(smartProjection.remainingKm)} ${distanceUnitLabel}` : "—"}
+              </p>
+            </div>
+            <div className="h-10 w-px bg-[hsl(var(--border))] hidden md:block"></div>
+            <div>
+              <p className="text-[hsl(var(--foreground))]/70 text-xs uppercase tracking-wider mb-1">Days left</p>
+              <p className="text-xl font-semibold">
+                {smartProjection ? `~${smartProjection.remainingDays}` : "—"}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -601,41 +637,8 @@ export default function DashboardClient({
 
         <div className="grid gap-3 lg:col-span-2 lg:grid-cols-2">
           <div className="glass-card p-4">
-            <p className="text-sm font-medium">Projections</p>
+            <p className="text-sm font-medium">Monthly Forecasts & Trends</p>
             <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
-              <div>
-                <div className="flex justify-between items-center pr-2">
-                  <p className="text-[hsl(var(--foreground))]/70">Remaining range</p>
-                  {smartProjection?.tankPercent !== null && smartProjection?.tankPercent !== undefined && (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]">
-                      ~{smartProjection.tankPercent}% full
-                    </span>
-                  )}
-                </div>
-                {smartProjection ? (
-                  <>
-                    <p className="text-lg font-semibold">{fmtDistance(smartProjection.remainingKm)} {distanceUnitLabel} · ~{smartProjection.remainingDays} days</p>
-                    <p className="text-[hsl(var(--foreground))]/60">
-                      Est. {fmtFuel(smartProjection.remainingFuelL)} {fuelUnitLabel} left in tank.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[hsl(var(--foreground))]/60">Add a fill-up and odometer entries to project range.</p>
-                )}
-              </div>
-              <div>
-                <p className="text-[hsl(var(--foreground))]/70">If you fill today</p>
-                {smartProjectionToday ? (
-                  <>
-                    <p className="text-lg font-semibold">{fmtDistance(smartProjectionToday.remainingKm)} {distanceUnitLabel} · ~{smartProjectionToday.remainingDays} days</p>
-                    <p className="text-[hsl(var(--foreground))]/60">
-                      Assumes {fmtFuel(assumedFillVolume)} {fuelUnitLabel} using recent EWMA mileage.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[hsl(var(--foreground))]/60">Enter a recent fill-up to forecast today’s range.</p>
-                )}
-              </div>
               <div>
                 <p className="text-[hsl(var(--foreground))]/70">Projected monthly cost</p>
                 <p className="text-lg font-semibold">{currencyFmt.format(projectedMonthlyCost)}</p>
