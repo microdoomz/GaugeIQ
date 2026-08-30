@@ -256,10 +256,29 @@ export const computeFuelMileage = (fillups: FuelFillUp[]): FuelMileageResult => 
     // If partial, we just keep accumulating.
   }
 
+  // Compute robust global average (distance from first to last fill / all fuel except first fill)
+  let globalAvgMileage = 0;
+  if (sorted.length > 1) {
+    const firstFill = sorted[0];
+    const lastFill = sorted[sorted.length - 1];
+    const distance = lastFill.odometerAtFill - firstFill.odometerAtFill;
+    
+    let totalFuelSinceFirst = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      totalFuelSinceFirst += sorted[i].fuelVolume;
+    }
+
+    if (totalFuelSinceFirst > 0 && distance > 0) {
+      globalAvgMileage = distance / totalFuelSinceFirst;
+    }
+  }
+
   // Compute weighted average and variance statistics.
   const totalCycleDistance = cycles.reduce((s, c) => s + c.distance, 0);
   const totalCycleFuel = cycles.reduce((s, c) => s + c.fuelVolume, 0);
-  const weightedAvgMileage = totalCycleFuel > 0 ? totalCycleDistance / totalCycleFuel : 0;
+  
+  // Use the robust global average if available, as it is highly resistant to incorrectly logged partial fill-ups.
+  const weightedAvgMileage = globalAvgMileage > 0 ? globalAvgMileage : (totalCycleFuel > 0 ? totalCycleDistance / totalCycleFuel : 0);
 
   let mileageStdDev = 0;
   let mileageMin = 0;
@@ -499,22 +518,20 @@ export const computeSmartProjection = ({
   let lastFullFillOdometer = lastFill.odometerAtFill;
   let fuelAddedSinceLastFull = 0;
 
+  // Find the largest fillup ever recorded for this vehicle as a fallback tank capacity
+  const maxFuelAddedEver = Math.max(...sortedFillups.map(f => f.fuelVolume), 0);
+  const assumedTankCapacity = (vehicle?.tankCapacity && vehicle.tankCapacity > 0)
+    ? vehicle.tankCapacity
+    : (maxFuelAddedEver > 0 ? maxFuelAddedEver * 1.15 : 0); // 15% buffer
+
   for (let i = sortedFillups.length - 1; i >= 0; i--) {
     const f = sortedFillups[i];
     fuelAddedSinceLastFull += f.fuelVolume;
     if (f.isFullTank) {
       lastFullFillOdometer = f.odometerAtFill;
-      // On a full tank, the tank was full, so fuel = tankCapacity or we estimate.
-      const tankCap = vehicle?.tankCapacity;
-      if (tankCap && tankCap > 0) {
-        fuelInTankAtLastFullFill = tankCap;
-      } else {
-        // Estimate: the fill volume was what it took to fill from whatever level.
-        // Since it's full, total fuel = fillVolume + whatever was already there.
-        // Best estimate without tankCapacity: use fill volume as approximation
-        // (user filled from near-empty most likely). Add any partial fills after.
-        fuelInTankAtLastFullFill = f.fuelVolume;
-      }
+      // Use the known or estimated tank capacity, falling back to fill volume if needed
+      fuelInTankAtLastFullFill = assumedTankCapacity > 0 ? assumedTankCapacity : f.fuelVolume;
+      
       // Now add back only the partial fills that came AFTER this full fill.
       fuelAddedSinceLastFull = 0;
       for (let j = i + 1; j < sortedFillups.length; j++) {
