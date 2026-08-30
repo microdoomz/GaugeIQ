@@ -256,20 +256,21 @@ export const computeFuelMileage = (fillups: FuelFillUp[]): FuelMileageResult => 
     // If partial, we just keep accumulating.
   }
 
-  // Compute robust global average (distance from first to last fill / all fuel except first fill)
-  let globalAvgMileage = 0;
+  // Compute robust average over recent fillups (last 5 fillup intervals, requiring up to 6 fillups)
+  let recentAvgMileage = 0;
   if (sorted.length > 1) {
-    const firstFill = sorted[0];
-    const lastFill = sorted[sorted.length - 1];
-    const distance = lastFill.odometerAtFill - firstFill.odometerAtFill;
+    const recentFills = sorted.slice(-6); // Take up to the last 6 fillups
+    const firstRecent = recentFills[0];
+    const lastRecent = recentFills[recentFills.length - 1];
+    const distance = lastRecent.odometerAtFill - firstRecent.odometerAtFill;
     
-    let totalFuelSinceFirst = 0;
-    for (let i = 1; i < sorted.length; i++) {
-      totalFuelSinceFirst += sorted[i].fuelVolume;
+    let totalFuelRecent = 0;
+    for (let i = 1; i < recentFills.length; i++) {
+      totalFuelRecent += recentFills[i].fuelVolume;
     }
 
-    if (totalFuelSinceFirst > 0 && distance > 0) {
-      globalAvgMileage = distance / totalFuelSinceFirst;
+    if (totalFuelRecent > 0 && distance > 0) {
+      recentAvgMileage = distance / totalFuelRecent;
     }
   }
 
@@ -277,8 +278,8 @@ export const computeFuelMileage = (fillups: FuelFillUp[]): FuelMileageResult => 
   const totalCycleDistance = cycles.reduce((s, c) => s + c.distance, 0);
   const totalCycleFuel = cycles.reduce((s, c) => s + c.fuelVolume, 0);
   
-  // Use the robust global average if available, as it is highly resistant to incorrectly logged partial fill-ups.
-  const weightedAvgMileage = globalAvgMileage > 0 ? globalAvgMileage : (totalCycleFuel > 0 ? totalCycleDistance / totalCycleFuel : 0);
+  // Use the robust recent average if available, as it perfectly handles partial fill-ups without being overly optimistic.
+  const weightedAvgMileage = recentAvgMileage > 0 ? recentAvgMileage : (totalCycleFuel > 0 ? totalCycleDistance / totalCycleFuel : 0);
 
   let mileageStdDev = 0;
   let mileageMin = 0;

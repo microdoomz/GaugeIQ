@@ -330,11 +330,11 @@ export default function DashboardClient({
 
   const smartProjection = useMemo(() => {
     return computeSmartProjection({
-      fillups: vehicleFilteredFillups,
-      entries: vehicleFilteredEntries,
+      fillups: anchorFillups,
+      entries: anchorEntries,
       vehicles,
     });
-  }, [vehicleFilteredFillups, vehicleFilteredEntries, vehicles]);
+  }, [anchorFillups, anchorEntries, vehicles]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const avgFillVolume = vehicleFilteredFillups.length
@@ -345,24 +345,7 @@ export default function DashboardClient({
   const todaysFill = vehicleFilteredFillups.find((f) => f.date === todayIso);
   const assumedFillVolume = todaysFill?.fuelVolume ?? (avgFillVolume > 0 ? avgFillVolume : lastFill?.fuelVolume ?? 0);
 
-  const smartProjectionToday = useMemo(() => {
-    // If they filled today, project from now
-    return computeSmartProjection({
-      fillups: vehicleFilteredFillups.length ? [...vehicleFilteredFillups, {
-        id: "simulated",
-        user_id: "",
-        vehicle_id: vehicles[0]?.id ?? "",
-        date: todayIso,
-        odometerAtFill: distanceReadings.length ? distanceReadings[distanceReadings.length - 1].odometer : 0,
-        fuelVolume: assumedFillVolume,
-        totalCost: assumedFillVolume * (todayFuelPricePerLitre ?? 0),
-        isFullTank: true,
-        created_at: new Date().toISOString(),
-      }] : [],
-      entries: vehicleFilteredEntries,
-      vehicles,
-    });
-  }, [vehicleFilteredFillups, vehicleFilteredEntries, vehicles, todayIso, distanceReadings, assumedFillVolume, todayFuelPricePerLitre]);
+
 
   const distanceByVehicle = useMemo(() => {
     const map = new Map<string, number>();
