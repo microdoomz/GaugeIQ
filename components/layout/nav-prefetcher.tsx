@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const ROUTES = ["/dashboard", "/vehicles", "/logs", "/history", "/trips", "/settings"];
+const ROUTES = ["/dashboard", "/vehicles", "/logs", "/history", "/trips", "/shortcuts", "/settings"];
 
 export const NavPrefetcher = () => {
   const router = useRouter();

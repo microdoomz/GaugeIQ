@@ -6,7 +6,7 @@ This guide walks you through creating an Apple Shortcut that lets you quickly re
 
 ## Prerequisites
 
-- Your GaugeIQ app must be deployed and accessible via a URL (e.g., `https://your-gaugeiq-app.vercel.app`)
+- Your GaugeIQ app URL: `https://gauge-iq.vercel.app`
 - You need at least one vehicle already added in the GaugeIQ web app
 - You need your GaugeIQ login email and password
 
@@ -34,7 +34,7 @@ This shortcut authenticates you and saves your tokens for future use.
 
 **Action 3 — Login API Call**
 - Add: **Get Contents of URL**
-  - URL: `https://YOUR_APP_URL/api/shortcuts/auth`
+  - URL: `https://gauge-iq.vercel.app/api/shortcuts/auth`
   - Method: **POST**
   - Headers: `Content-Type` = `application/json`
   - Request Body: **JSON**
@@ -80,7 +80,7 @@ This shortcut refreshes your access token when it expires (every ~1 hour).
 
 **Action 2 — Refresh API Call**
 - Add: **Get Contents of URL**
-  - URL: `https://YOUR_APP_URL/api/shortcuts/auth/refresh`
+  - URL: `https://gauge-iq.vercel.app/api/shortcuts/auth/refresh`
   - Method: **POST**
   - Headers: `Content-Type` = `application/json`
   - Request Body: **JSON**
@@ -113,7 +113,7 @@ This is the shortcut you'll use daily.
 
 #### Action 2 — Fetch Vehicles
 - Add: **Get Contents of URL**
-  - URL: `https://YOUR_APP_URL/api/shortcuts/vehicles`
+  - URL: `https://gauge-iq.vercel.app/api/shortcuts/vehicles`
   - Method: **GET**
   - Headers:
     - `Authorization` = `Bearer [token]` *(use the token variable)*
@@ -157,7 +157,7 @@ This is the shortcut you'll use daily.
 
 **Step D — Save to GaugeIQ**
 - Add: **Get Contents of URL**
-  - URL: `https://YOUR_APP_URL/api/shortcuts/odometer`
+  - URL: `https://gauge-iq.vercel.app/api/shortcuts/odometer`
   - Method: **POST**
   - Headers:
     - `Authorization` = `Bearer [token]`
@@ -209,7 +209,7 @@ This is the shortcut you'll use daily.
 
 **Step G — Save to GaugeIQ**
 - Add: **Get Contents of URL**
-  - URL: `https://YOUR_APP_URL/api/shortcuts/fuel`
+  - URL: `https://gauge-iq.vercel.app/api/shortcuts/fuel`
   - Method: **POST**
   - Headers:
     - `Authorization` = `Bearer [token]`
@@ -235,31 +235,31 @@ This is the shortcut you'll use daily.
 
 ## API Reference (for curl testing)
 
-Replace `YOUR_APP_URL` with your actual deployment URL (e.g., `https://gaugeiq.vercel.app`).
+All curl commands use the production endpoint: `https://gauge-iq.vercel.app`.
 
 ### Login
 ```bash
-curl -X POST https://YOUR_APP_URL/api/shortcuts/auth \
+curl -X POST https://gauge-iq.vercel.app/api/shortcuts/auth \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com","password":"yourpassword"}'
 ```
 
 ### Refresh Token
 ```bash
-curl -X POST https://YOUR_APP_URL/api/shortcuts/auth/refresh \
+curl -X POST https://gauge-iq.vercel.app/api/shortcuts/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{"refresh_token":"your_refresh_token_here"}'
 ```
 
 ### List Vehicles
 ```bash
-curl https://YOUR_APP_URL/api/shortcuts/vehicles \
+curl https://gauge-iq.vercel.app/api/shortcuts/vehicles \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Add/Update Odometer
 ```bash
-curl -X POST https://YOUR_APP_URL/api/shortcuts/odometer \
+curl -X POST https://gauge-iq.vercel.app/api/shortcuts/odometer \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"vehicle_id":"uuid","date":"2024-01-15","odometerReading":12345.6}'
@@ -267,7 +267,7 @@ curl -X POST https://YOUR_APP_URL/api/shortcuts/odometer \
 
 ### Add Fuel Fill-Up
 ```bash
-curl -X POST https://YOUR_APP_URL/api/shortcuts/fuel \
+curl -X POST https://gauge-iq.vercel.app/api/shortcuts/fuel \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"vehicle_id":"uuid","date":"2024-01-15","odometerAtFill":12345.6,"fuelVolume":3.2,"totalCost":350,"isFullTank":true}'

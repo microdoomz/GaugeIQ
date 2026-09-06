@@ -8,6 +8,7 @@ const navItems = [
   { href: "/logs", label: "Logs" },
   { href: "/history", label: "History" },
   { href: "/trips", label: "Trips" },
+  { href: "/shortcuts", label: "Shortcuts" },
   { href: "/settings", label: "Settings" },
 ];
 
