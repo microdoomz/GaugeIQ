@@ -70,24 +70,39 @@ function CodeBlock({ code, title }: { code: string; title?: string }) {
 }
 
 export function ShortcutsGuideClient() {
-  const [activeTab, setActiveTab] = useState<"all" | "part1" | "part2" | "part3" | "api" | "tips">("all");
+  const [activeTab, setActiveTab] = useState<"flow" | "guide" | "api" | "tips">("guide");
 
   const tabs = [
-    { id: "all", label: "Full Guide" },
-    { id: "part1", label: "Part 1: Login Setup" },
-    { id: "part2", label: "Part 2: Refresh Token" },
-    { id: "part3", label: "Part 3: Daily Log" },
-    { id: "api", label: "cURL Testing" },
-    { id: "tips", label: "Tips & FAQ" },
+    { id: "guide", label: "📱 Setup Guide (All-in-One)" },
+    { id: "flow", label: "🗺️ Flowchart & Architecture" },
+    { id: "api", label: "⚡ cURL API Reference" },
+    { id: "tips", label: "💡 Tips & FAQ" },
   ] as const;
-
-  const showSection = (section: "part1" | "part2" | "part3" | "api" | "tips") => {
-    return activeTab === "all" || activeTab === section;
-  };
 
   return (
     <div className="space-y-8">
-      {/* Quick Navigation Tabs */}
+      {/* Header Banner */}
+      <div className="glass-card p-5 border-l-4 border-l-[hsl(var(--primary))] space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <span>⚡</span> One Shortcut to Rule Everything
+            </h2>
+            <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70 mt-0.5">
+              No multiple shortcuts needed. A single <strong>&quot;GaugeIQ&quot;</strong> shortcut handles first-time login, silent token refresh, daily odometer updates, and fuel fill-ups.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[hsl(var(--foreground))]/60">Endpoint:</span>
+            <code className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono font-semibold text-[hsl(var(--primary))]">
+              https://gauge-iq.vercel.app
+            </code>
+            <CopyButton text="https://gauge-iq.vercel.app" label="Copy URL" />
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-[hsl(var(--border))] pb-3">
         {tabs.map((tab) => (
           <button
@@ -95,7 +110,7 @@ export function ShortcutsGuideClient() {
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={clsx(
-              "rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition whitespace-nowrap",
+              "rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-medium transition whitespace-nowrap",
               activeTab === tab.id
                 ? "bg-[hsl(var(--primary))]/15 text-[hsl(var(--primary))] font-semibold"
                 : "text-[hsl(var(--foreground))]/70 hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
@@ -106,502 +121,307 @@ export function ShortcutsGuideClient() {
         ))}
       </div>
 
-      {/* Prerequisites Banner */}
-      <div className="glass-card p-5 border-l-4 border-l-[hsl(var(--primary))] space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <span>📋</span> Prerequisites
-          </h2>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-[hsl(var(--foreground))]/60">App Endpoint:</span>
-            <code className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono font-semibold text-[hsl(var(--primary))]">
-              https://gauge-iq.vercel.app
-            </code>
-            <CopyButton text="https://gauge-iq.vercel.app" label="Copy URL" />
-          </div>
-        </div>
-        <ul className="grid gap-2 text-sm text-[hsl(var(--foreground))]/80 md:grid-cols-3">
-          <li className="flex items-start gap-2">
-            <span className="text-green-500 font-bold">✓</span>
-            <span>App URL configured to <strong>https://gauge-iq.vercel.app</strong></span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-green-500 font-bold">✓</span>
-            <span>At least one vehicle added in GaugeIQ</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-green-500 font-bold">✓</span>
-            <span>Your GaugeIQ login email and password</span>
-          </li>
-        </ul>
-      </div>
-
-      {/* PART 1: LOGIN SHORTCUT */}
-      {showSection("part1") && (
-        <section className="glass-card p-6 space-y-6">
-          <div className="border-b border-[hsl(var(--border))] pb-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))]/10 text-xs font-bold text-[hsl(var(--primary))]">
-                  1
-                </span>
-                <h2 className="text-lg font-semibold">Part 1: Create the &quot;GaugeIQ Login&quot; Shortcut</h2>
-              </div>
-              <span className="rounded-full bg-[hsl(var(--primary))]/10 px-2.5 py-0.5 text-xs font-medium text-[hsl(var(--primary))]">
-                One-Time Setup
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-[hsl(var(--foreground))]/70">
-              This shortcut authenticates your account and securely saves your access and refresh tokens to iCloud Drive for future calls.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-sm font-medium">Initial steps in the iOS Shortcuts App:</p>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-[hsl(var(--foreground))]/80">
-              <li>Open the <strong>Shortcuts</strong> app on your iPhone, iPad, or Mac.</li>
-              <li>Tap <strong>+</strong> to create a new Shortcut.</li>
-              <li>Rename it to <strong>&quot;GaugeIQ Login&quot;</strong>.</li>
-            </ol>
-
-            <h3 className="pt-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--foreground))]/60">
-              Add these actions in exact sequence:
-            </h3>
-
-            <div className="grid gap-3">
-              {/* Action 1 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 1</span>
-                  <span>Ask for Email</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Ask for Input</strong> → Type: <code className="text-[hsl(var(--primary))]">Text</code> → Prompt: <code className="text-[hsl(var(--primary))]">Enter your GaugeIQ email</code></li>
-                  <li>Add: <strong>Set Variable</strong> → Name: <code className="text-[hsl(var(--primary))]">email</code> → to <strong>Provided Input</strong></li>
-                </ul>
-              </div>
-
-              {/* Action 2 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 2</span>
-                  <span>Ask for Password</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Ask for Input</strong> → Type: <code className="text-[hsl(var(--primary))]">Text</code> → Prompt: <code className="text-[hsl(var(--primary))]">Enter your GaugeIQ password</code></li>
-                  <li>Add: <strong>Set Variable</strong> → Name: <code className="text-[hsl(var(--primary))]">password</code> → to <strong>Provided Input</strong></li>
-                </ul>
-              </div>
-
-              {/* Action 3 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center justify-between flex-wrap gap-2 font-medium text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 3</span>
-                    <span>Login API Call</span>
-                  </div>
-                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    POST
-                  </span>
-                </div>
-                <div className="mt-2 space-y-2 text-xs sm:text-sm text-[hsl(var(--foreground))]/80">
-                  <p>Add action: <strong>Get Contents of URL</strong></p>
-                  <ul className="list-disc list-inside space-y-1 pl-1">
-                    <li>URL: <code className="text-[hsl(var(--primary))] font-mono">https://gauge-iq.vercel.app/api/shortcuts/auth</code></li>
-                    <li>Method: <strong>POST</strong></li>
-                    <li>Headers: Key <code className="font-mono">Content-Type</code> = Value <code className="font-mono">application/json</code></li>
-                    <li>Request Body: <strong>JSON</strong></li>
-                  </ul>
-                  <CodeBlock
-                    code={`{\n  "email": email,\n  "password": password\n}`}
-                    title="JSON Body (select the Magic Variables for email & password)"
-                  />
-                </div>
-              </div>
-
-              {/* Action 4 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 4</span>
-                  <span>Check Success</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">success</code> → from <strong>Contents of URL</strong></li>
-                  <li>Add: <strong>If</strong> → <code className="font-mono">success</code> <strong>equals</strong> <code className="font-mono">1</code> (or <code className="font-mono">true</code>)</li>
-                </ul>
-              </div>
-
-              {/* Action 5 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 5</span>
-                  <span>Save Tokens (inside the &quot;If&quot; block)</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">access_token</code> → from <strong>Contents of URL</strong></li>
-                  <li>Add: <strong>Save to File</strong> → Path: <code className="font-mono text-[hsl(var(--primary))]">Shortcuts/GaugeIQ/access_token.txt</code> <em>(iCloud Drive)</em></li>
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">refresh_token</code> → from <strong>Contents of URL</strong></li>
-                  <li>Add: <strong>Save to File</strong> → Path: <code className="font-mono text-[hsl(var(--primary))]">Shortcuts/GaugeIQ/refresh_token.txt</code> <em>(iCloud Drive)</em></li>
-                  <li>Add: <strong>Show Alert</strong> → <code className="font-mono">✅ Login successful! Tokens saved.</code></li>
-                </ul>
-              </div>
-
-              {/* Action 6 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 6</span>
-                  <span>Handle Error (inside the &quot;Otherwise&quot; block)</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">error</code> → from <strong>Contents of URL</strong></li>
-                  <li>Add: <strong>Show Alert</strong> → <code className="font-mono">❌ Login failed: [error]</code></li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-[hsl(var(--primary))]/10 p-3 text-xs sm:text-sm text-[hsl(var(--foreground))]/80">
-              💡 <strong>Run this shortcut once</strong> now! You will see the confirmation alert and your tokens will be safely stored in your iCloud Drive.
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* PART 2: TOKEN REFRESH */}
-      {showSection("part2") && (
-        <section className="glass-card p-6 space-y-6">
-          <div className="border-b border-[hsl(var(--border))] pb-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))]/10 text-xs font-bold text-[hsl(var(--primary))]">
-                  2
-                </span>
-                <h2 className="text-lg font-semibold">Part 2: Create the &quot;GaugeIQ Refresh Token&quot; Shortcut</h2>
-              </div>
-              <span className="rounded-full bg-[hsl(var(--muted))] px-2.5 py-0.5 text-xs font-medium text-[hsl(var(--foreground))]/80">
-                Helper Shortcut
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-[hsl(var(--foreground))]/70">
-              Access tokens expire after ~1 hour for security. This shortcut exchanges your persistent refresh token for a fresh access token without asking for your password again.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <ol className="list-decimal list-inside space-y-1 text-sm text-[hsl(var(--foreground))]/80">
-              <li>Create a new Shortcut named <strong>&quot;GaugeIQ Refresh Token&quot;</strong>.</li>
-            </ol>
-
-            <div className="grid gap-3">
-              {/* Action 1 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 1</span>
-                  <span>Read Saved Refresh Token</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get File</strong> → Path: <code className="text-[hsl(var(--primary))] font-mono">Shortcuts/GaugeIQ/refresh_token.txt</code></li>
-                  <li>Add: <strong>Get Text from Input</strong></li>
-                  <li>Add: <strong>Set Variable</strong> → Name: <code className="text-[hsl(var(--primary))]">refresh_token</code></li>
-                </ul>
-              </div>
-
-              {/* Action 2 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center justify-between flex-wrap gap-2 font-medium text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 2</span>
-                    <span>Call Refresh API</span>
-                  </div>
-                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    POST
-                  </span>
-                </div>
-                <div className="mt-2 space-y-2 text-xs sm:text-sm text-[hsl(var(--foreground))]/80">
-                  <p>Add action: <strong>Get Contents of URL</strong></p>
-                  <ul className="list-disc list-inside space-y-1 pl-1">
-                    <li>URL: <code className="text-[hsl(var(--primary))] font-mono">https://gauge-iq.vercel.app/api/shortcuts/auth/refresh</code></li>
-                    <li>Method: <strong>POST</strong></li>
-                    <li>Headers: Key <code className="font-mono">Content-Type</code> = Value <code className="font-mono">application/json</code></li>
-                    <li>Request Body: <strong>JSON</strong></li>
-                  </ul>
-                  <CodeBlock
-                    code={`{\n  "refresh_token": refresh_token\n}`}
-                    title="JSON Body"
-                  />
-                </div>
-              </div>
-
-              {/* Action 3 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 3</span>
-                  <span>Save New Tokens</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">success</code></li>
-                  <li>Add: <strong>If</strong> → <code className="font-mono">success</code> equals <code className="font-mono">1</code>:
-                    <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
-                      <li><strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">access_token</code> → <strong>Save to File</strong> → <code className="font-mono text-[hsl(var(--primary))]">Shortcuts/GaugeIQ/access_token.txt</code> (replace existing)</li>
-                      <li><strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">refresh_token</code> → <strong>Save to File</strong> → <code className="font-mono text-[hsl(var(--primary))]">Shortcuts/GaugeIQ/refresh_token.txt</code> (replace existing)</li>
-                    </ul>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* PART 3: MAIN LOGGING SHORTCUT */}
-      {showSection("part3") && (
-        <section className="glass-card p-6 space-y-6">
-          <div className="border-b border-[hsl(var(--border))] pb-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))]/10 text-xs font-bold text-[hsl(var(--primary))]">
-                  3
-                </span>
-                <h2 className="text-lg font-semibold">Part 3: Create the Main &quot;GaugeIQ Log&quot; Shortcut</h2>
-              </div>
+      {/* TAB 1: FLOWCHART & ARCHITECTURE */}
+      {activeTab === "flow" && (
+        <section className="space-y-6">
+          <div className="glass-card p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-[hsl(var(--border))] pb-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <span>🔄</span> Complete Shortcut Execution Flow
+              </h3>
               <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                Daily Shortcut
+                100% Supported by Backend
               </span>
             </div>
-            <p className="mt-1 text-sm text-[hsl(var(--foreground))]/70">
-              This is the shortcut you trigger from your Home Screen, widget, Siri, or Action Button to record odometer readings and fuel fill-ups.
+            <p className="text-sm text-[hsl(var(--foreground))]/75">
+              The shortcut intelligently checks for your saved credentials, refreshes tokens when expired without annoying password prompts, and routes to your chosen action:
             </p>
-          </div>
 
-          <div className="space-y-4">
-            <ol className="list-decimal list-inside space-y-1 text-sm text-[hsl(var(--foreground))]/80">
-              <li>Create a new Shortcut named <strong>&quot;GaugeIQ Log&quot;</strong>.</li>
-            </ol>
-
-            <h3 className="pt-2 text-sm font-semibold uppercase tracking-wider text-[hsl(var(--foreground))]/60">
-              Setup Actions (Actions 1 to 4):
-            </h3>
-
-            <div className="grid gap-3">
-              {/* Action 1 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 1</span>
-                  <span>Read Access Token</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get File</strong> → <code className="text-[hsl(var(--primary))] font-mono">Shortcuts/GaugeIQ/access_token.txt</code></li>
-                  <li>Add: <strong>Get Text from Input</strong></li>
-                  <li>Add: <strong>Set Variable</strong> → Name: <code className="text-[hsl(var(--primary))]">token</code></li>
-                </ul>
-              </div>
-
-              {/* Action 2 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center justify-between flex-wrap gap-2 font-medium text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 2</span>
-                    <span>Fetch Vehicles &amp; Auto-Refresh</span>
-                  </div>
-                  <span className="rounded bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-600 dark:text-sky-400">
-                    GET
-                  </span>
-                </div>
-                <ul className="mt-2 space-y-1.5 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get Contents of URL</strong>
-                    <ul className="list-disc list-inside pl-4 space-y-1 text-xs">
-                      <li>URL: <code className="text-[hsl(var(--primary))] font-mono">https://gauge-iq.vercel.app/api/shortcuts/vehicles</code></li>
-                      <li>Method: <strong>GET</strong></li>
-                      <li>Headers: Key <code className="font-mono">Authorization</code> = Value <code className="font-mono">Bearer [token]</code> <em>(variable)</em></li>
-                    </ul>
-                  </li>
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="font-mono">success</code></li>
-                  <li>Add: <strong>If</strong> → <code className="font-mono">success</code> <strong>does NOT equal</strong> <code className="font-mono">1</code>:
-                    <ul className="list-disc list-inside pl-4 space-y-0.5 text-xs text-[hsl(var(--foreground))]/70">
-                      <li>Add: <strong>Run Shortcut</strong> → <code className="font-medium">GaugeIQ Refresh Token</code></li>
-                      <li>Add: Re-read token from file and re-fetch vehicles <em>(automatic silent token refresh!)</em></li>
-                    </ul>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Action 3 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 3</span>
-                  <span>Parse Vehicle List</span>
-                </div>
-                <ul className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80 list-disc list-inside">
-                  <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="text-[hsl(var(--primary))] font-mono">vehicles</code> → from <strong>Contents of URL</strong></li>
-                  <li>Add: <strong>Set Variable</strong> → Name: <code className="text-[hsl(var(--primary))]">vehicleList</code></li>
-                </ul>
-              </div>
-
-              {/* Action 4 */}
-              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold">Action 4</span>
-                  <span>Main Prompt Menu</span>
-                </div>
-                <div className="mt-2 space-y-1 text-xs sm:text-sm text-[hsl(var(--foreground))]/80">
-                  <p>Add: <strong>Choose from Menu</strong></p>
-                  <ul className="list-disc list-inside pl-4 space-y-1">
-                    <li>Prompt: <code className="text-[hsl(var(--primary))]">What do you want to record?</code></li>
-                    <li>Option 1: <strong className="font-mono">🚗 Daily Odometer</strong></li>
-                    <li>Option 2: <strong className="font-mono">⛽ Fuel Fill-Up</strong></li>
-                  </ul>
-                </div>
-              </div>
+            <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 sm:p-6 overflow-x-auto">
+              <pre className="font-mono text-xs sm:text-sm text-[hsl(var(--foreground))]/90 leading-relaxed whitespace-pre">
+{`               GaugeIQ Shortcut
+                      │
+                      ▼
+              Check saved token
+                      │
+           ┌──────────┴──────────┐
+      Token exists            No token (1st run)
+           │                     │
+           │              Ask email / password
+           │                     │
+           │                  Login API
+           │                     │
+           │              Save new tokens
+           │                     │
+           └──────────┬──────────┘
+                      │
+                      ▼
+             Try to get vehicles
+                      │
+                      ▼
+               Does it work?
+                 /        \\
+              YES          NO (Token expired)
+               │            │
+               │       Refresh token API
+               │            │
+               │       Save new tokens
+               │            │
+               │       Re-fetch vehicles
+               \\            /
+                      ▼
+            What do you want to record?
+           ┌──────────┴──────────┐
+           │                     │
+     🚗 Odometer           ⛽ Fuel Fill-Up
+           │                     │
+        Vehicle               Vehicle
+           │                     │
+         Date                  Date
+           │                     │
+        Reading           Odometer at fill
+           │                     │
+           │                Fuel volume
+           │                     │
+           │                 Fuel cost
+           │                     │
+           │              Full / Partial
+           └──────────┬──────────┘
+                      │
+                      ▼
+                 GaugeIQ API
+                      │
+                      ▼
+                 Show Result`}
+              </pre>
             </div>
+          </div>
+        </section>
+      )}
 
-            {/* Sub-menu 1: Odometer */}
-            <div className="rounded-2xl border-2 border-blue-500/20 bg-blue-500/[0.02] p-5 space-y-4">
+      {/* TAB 2: STEP-BY-STEP GUIDE */}
+      {activeTab === "guide" && (
+        <section className="space-y-6">
+          <div className="glass-card p-6 space-y-6">
+            <div className="border-b border-[hsl(var(--border))] pb-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="text-base font-semibold flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                  <span>🚗</span> Option 1: Daily Odometer Flow
-                </h4>
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  POST /api/shortcuts/odometer
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <span>📱</span> Build the &quot;GaugeIQ&quot; All-in-One Shortcut
+                </h2>
+                <span className="rounded-full bg-[hsl(var(--primary))]/10 px-3 py-1 text-xs font-semibold text-[hsl(var(--primary))]">
+                  Only 1 Shortcut Needed
                 </span>
               </div>
+              <p className="mt-1 text-sm text-[hsl(var(--foreground))]/75">
+                Follow these steps inside the <strong>Shortcuts</strong> app on iOS / iPadOS / macOS.
+              </p>
+            </div>
+
+            {/* SECTION A */}
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--primary))]/15 text-xs font-bold">A</span>
+                Step 1: Saved Token Check &amp; First-Time Login
+              </h3>
               <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
-                Inside the <strong>🚗 Daily Odometer</strong> branch of the menu, add the following steps:
+                Checks if you already logged in. If not, prompts for your credentials once and saves the tokens to iCloud Drive.
               </p>
 
-              <div className="grid gap-2.5 text-xs sm:text-sm">
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step A — Choose Vehicle:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Choose from List</strong> → from <code className="font-mono">vehicleList</code></li>
-                    <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="font-mono text-[hsl(var(--primary))]">id</code> → from <strong>Chosen Item</strong></li>
-                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">vehicle_id</code></li>
+              <div className="grid gap-3">
+                <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-xs sm:text-sm space-y-1.5">
+                  <div className="font-semibold flex items-center gap-2">
+                    <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono">Action 1</span>
+                    <span>Read saved access token</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[hsl(var(--foreground))]/80 pl-1">
+                    <li>Add: <strong>Get File from Folder</strong> → Path: <code className="font-mono text-[hsl(var(--primary))]">Shortcuts/GaugeIQ/access_token.txt</code> (Toggle <em>&quot;Error If Not Found&quot;</em> to <strong>OFF</strong>)</li>
+                    <li>Add: <strong>Get Text from Input</strong></li>
+                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">token</code> → to <strong>Text</strong></li>
                   </ul>
                 </div>
 
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step B — Date:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Date</strong> → defaults to Current Date</li>
-                    <li>Add: <strong>Ask for Input</strong> → Type: <code className="font-mono">Date</code> → Prompt: <code className="font-mono">Date for this reading</code> → Default: <strong>Current Date</strong></li>
-                    <li>Add: <strong>Format Date</strong> → Format: <code className="font-mono text-[hsl(var(--primary))]">yyyy-MM-dd</code> <em>(ISO 8601)</em></li>
-                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">date</code></li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step C — Odometer Reading:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Ask for Input</strong> → Type: <strong>Number</strong> → Prompt: <code className="font-mono">Enter odometer reading</code> → Allow Decimals: ✅</li>
-                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">reading</code></li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step D — Save to GaugeIQ (API Call):</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-1">
-                    <li>Add: <strong>Get Contents of URL</strong></li>
-                    <li>URL: <code className="text-[hsl(var(--primary))] font-mono">https://gauge-iq.vercel.app/api/shortcuts/odometer</code></li>
-                    <li>Method: <strong>POST</strong></li>
-                    <li>Headers:
-                      <code className="block pl-4 font-mono text-xs">Authorization: Bearer [token]</code>
-                      <code className="block pl-4 font-mono text-xs">Content-Type: application/json</code>
+                <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-xs sm:text-sm space-y-1.5">
+                  <div className="font-semibold flex items-center gap-2">
+                    <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono">Action 2</span>
+                    <span>If no token exists (First-time setup only)</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[hsl(var(--foreground))]/80 pl-1">
+                    <li>Add: <strong>If</strong> → <code className="font-mono">token</code> <strong>does not have any value</strong>:
+                      <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
+                        <li><strong>Ask for Input</strong> (Text) → Prompt: <code className="font-mono">Enter your GaugeIQ email</code> → <strong>Set Variable</strong> <code className="font-mono">email</code></li>
+                        <li><strong>Ask for Input</strong> (Text) → Prompt: <code className="font-mono">Enter your GaugeIQ password</code> → <strong>Set Variable</strong> <code className="font-mono">password</code></li>
+                        <li><strong>Get Contents of URL</strong>:
+                          <div className="pl-4 mt-1 font-mono text-xs">
+                            URL: <code className="text-[hsl(var(--primary))]">https://gauge-iq.vercel.app/api/shortcuts/auth</code><br/>
+                            Method: <strong>POST</strong><br/>
+                            Headers: <code className="text-[hsl(var(--primary))]">Content-Type: application/json</code>
+                          </div>
+                          <CodeBlock
+                            code={`{\n  "email": email,\n  "password": password\n}`}
+                            title="JSON Body"
+                          />
+                        </li>
+                        <li><strong>Get Dictionary Value</strong> <code className="font-mono">access_token</code> → <strong>Save to File</strong> → <code className="font-mono">Shortcuts/GaugeIQ/access_token.txt</code> (overwrite)</li>
+                        <li><strong>Set Variable</strong> <code className="font-mono">token</code> → to <code className="font-mono">access_token</code></li>
+                        <li><strong>Get Dictionary Value</strong> <code className="font-mono">refresh_token</code> → <strong>Save to File</strong> → <code className="font-mono">Shortcuts/GaugeIQ/refresh_token.txt</code> (overwrite)</li>
+                      </ul>
                     </li>
-                    <li>Request Body: <strong>JSON</strong></li>
+                    <li>Add: <strong>End If</strong></li>
                   </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION B */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-base font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--primary))]/15 text-xs font-bold">B</span>
+                Step 2: Fetch Vehicles &amp; Silent Auto-Refresh
+              </h3>
+              <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
+                Tries fetching your vehicle list. If your access token has expired, it automatically calls the refresh API and saves fresh tokens seamlessly.
+              </p>
+
+              <div className="grid gap-3">
+                <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-xs sm:text-sm space-y-1.5">
+                  <div className="font-semibold flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono">Action 3</span>
+                      <span>Fetch Vehicles</span>
+                    </div>
+                    <span className="rounded bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-600 dark:text-sky-400">GET</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[hsl(var(--foreground))]/80 pl-1">
+                    <li>Add: <strong>Get Contents of URL</strong>
+                      <div className="pl-4 mt-1 font-mono text-xs">
+                        URL: <code className="text-[hsl(var(--primary))]">https://gauge-iq.vercel.app/api/shortcuts/vehicles</code><br/>
+                        Method: <strong>GET</strong><br/>
+                        Headers: <code className="text-[hsl(var(--primary))]">Authorization: Bearer [token]</code>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-xs sm:text-sm space-y-1.5">
+                  <div className="font-semibold flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono">Action 4</span>
+                      <span>Silent Refresh Check</span>
+                    </div>
+                    <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">POST /refresh</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[hsl(var(--foreground))]/80 pl-1">
+                    <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="font-mono text-[hsl(var(--primary))]">success</code> → from Contents of URL</li>
+                    <li>Add: <strong>If</strong> → <code className="font-mono">success</code> <strong>does NOT equal</strong> <code className="font-mono">1</code>:
+                      <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
+                        <li><strong>Get File from Folder</strong> → Path: <code className="font-mono">Shortcuts/GaugeIQ/refresh_token.txt</code> → <strong>Get Text from Input</strong> → <strong>Set Variable</strong> <code className="font-mono">saved_refresh_token</code></li>
+                        <li><strong>Get Contents of URL</strong>:
+                          <div className="pl-4 mt-1 font-mono text-xs">
+                            URL: <code className="text-[hsl(var(--primary))]">https://gauge-iq.vercel.app/api/shortcuts/auth/refresh</code><br/>
+                            Method: <strong>POST</strong><br/>
+                            Headers: <code className="text-[hsl(var(--primary))]">Content-Type: application/json</code>
+                          </div>
+                          <CodeBlock
+                            code={`{\n  "refresh_token": saved_refresh_token\n}`}
+                            title="JSON Body"
+                          />
+                        </li>
+                        <li><strong>Get Dictionary Value</strong> <code className="font-mono">access_token</code> → <strong>Save to File</strong> → <code className="font-mono">Shortcuts/GaugeIQ/access_token.txt</code> (overwrite)</li>
+                        <li><strong>Set Variable</strong> <code className="font-mono">token</code> → to new <code className="font-mono">access_token</code></li>
+                        <li><strong>Get Dictionary Value</strong> <code className="font-mono">refresh_token</code> → <strong>Save to File</strong> → <code className="font-mono">Shortcuts/GaugeIQ/refresh_token.txt</code> (overwrite)</li>
+                        <li><strong>Get Contents of URL</strong> <em>(re-fetch vehicles)</em>:
+                          <div className="pl-4 mt-1 font-mono text-xs">
+                            URL: <code className="text-[hsl(var(--primary))]">https://gauge-iq.vercel.app/api/shortcuts/vehicles</code><br/>
+                            Method: <strong>GET</strong><br/>
+                            Headers: <code className="text-[hsl(var(--primary))]">Authorization: Bearer [token]</code>
+                          </div>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>Add: <strong>End If</strong></li>
+                    <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="font-mono">vehicles</code> → <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">vehicleList</code></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION C */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-base font-semibold flex items-center gap-2 text-[hsl(var(--primary))]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--primary))]/15 text-xs font-bold">C</span>
+                Step 3: Main Action Menu &amp; Recording
+              </h3>
+
+              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-xs sm:text-sm space-y-2">
+                <div className="font-semibold flex items-center gap-2">
+                  <span className="rounded bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-mono">Action 5</span>
+                  <span>Menu Prompt</span>
+                </div>
+                <p className="text-[hsl(var(--foreground))]/80">
+                  Add: <strong>Choose from Menu</strong> → Prompt: <code className="font-mono text-[hsl(var(--primary))]">What to record?</code>
+                </p>
+                <div className="flex gap-2 font-mono">
+                  <span className="rounded-lg bg-blue-500/10 px-2.5 py-1 text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                    🚗 Odometer
+                  </span>
+                  <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                    ⛽ Fuel Fill-Up
+                  </span>
+                </div>
+              </div>
+
+              {/* Branch 1: Odometer */}
+              <div className="rounded-2xl border-2 border-blue-500/20 bg-blue-500/[0.02] p-5 space-y-3">
+                <h4 className="text-base font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                  <span>🚗</span> Inside &quot;🚗 Odometer&quot; Menu Branch:
+                </h4>
+                <div className="space-y-2 text-xs sm:text-sm text-[hsl(var(--foreground))]/85">
+                  <p>1. <strong>Choose Vehicle:</strong> Add <strong>Choose from List</strong> (from <code className="font-mono">vehicleList</code>) → <strong>Get Dictionary Value</strong> <code className="font-mono">id</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">vehicle_id</code></p>
+                  <p>2. <strong>Select Date:</strong> Add <strong>Date</strong> (Current Date) → <strong>Ask for Input</strong> (Date, default Current Date) → <strong>Format Date</strong> (<code className="font-mono">yyyy-MM-dd</code>) → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">date</code></p>
+                  <p>3. <strong>Enter Reading:</strong> Add <strong>Ask for Input</strong> (Number, Allow Decimals: ✅) → Prompt: <code className="font-mono">Enter odometer reading</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">reading</code></p>
+                  <p>4. <strong>Send to GaugeIQ:</strong> Add <strong>Get Contents of URL</strong></p>
+                  <div className="pl-4 font-mono text-xs">
+                    URL: <code className="text-[hsl(var(--primary))]">https://gauge-iq.vercel.app/api/shortcuts/odometer</code><br/>
+                    Method: <strong>POST</strong><br/>
+                    Headers:
+                    <code className="block pl-2">Authorization: Bearer [token]</code>
+                    <code className="block pl-2">Content-Type: application/json</code>
+                  </div>
                   <CodeBlock
                     code={`{\n  "vehicle_id": vehicle_id,\n  "date": date,\n  "odometerReading": reading\n}`}
                     title="JSON Body"
                   />
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step E — Show Result Alert:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="font-mono text-[hsl(var(--primary))]">message</code> → from <strong>Contents of URL</strong></li>
-                    <li>Add: <strong>Show Alert</strong> → <code className="font-mono">[message]</code></li>
-                    <li className="text-xs text-[hsl(var(--foreground))]/60">Shows: <em>&quot;✅ Odometer reading of 12345.6 saved for 2024-01-15.&quot;</em> or <em>&quot;✅ Odometer updated to 12345.6 for 2024-01-15.&quot;</em></li>
-                  </ul>
+                  <p>5. <strong>Show Alert:</strong> Add <strong>Get Dictionary Value</strong> <code className="font-mono">message</code> → <strong>Show Alert</strong> <code className="font-mono">[message]</code></p>
                 </div>
               </div>
-            </div>
 
-            {/* Sub-menu 2: Fuel */}
-            <div className="rounded-2xl border-2 border-amber-500/20 bg-amber-500/[0.02] p-5 space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="text-base font-semibold flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                  <span>⛽</span> Option 2: Fuel Fill-Up Flow
+              {/* Branch 2: Fuel */}
+              <div className="rounded-2xl border-2 border-amber-500/20 bg-amber-500/[0.02] p-5 space-y-3">
+                <h4 className="text-base font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                  <span>⛽</span> Inside &quot;⛽ Fuel Fill-Up&quot; Menu Branch:
                 </h4>
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  POST /api/shortcuts/fuel
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
-                Inside the <strong>⛽ Fuel Fill-Up</strong> branch of the menu, add the following steps:
-              </p>
-
-              <div className="grid gap-2.5 text-xs sm:text-sm">
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step A &amp; B — Choose Vehicle and Date:</strong>
-                  <p className="text-xs text-[hsl(var(--foreground))]/70 mt-1">Same as Steps A &amp; B in the Odometer flow above (choose vehicle, format date to <code className="font-mono">yyyy-MM-dd</code>).</p>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step C — Odometer Reading at Fill:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Ask for Input</strong> → Type: <strong>Number</strong> → Prompt: <code className="font-mono">Odometer reading at fill</code> → Allow Decimals: ✅</li>
-                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">odometerAtFill</code></li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step D — Fuel Volume:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Ask for Input</strong> → Type: <strong>Number</strong> → Prompt: <code className="font-mono">Fuel volume (litres)</code> → Allow Decimals: ✅</li>
-                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">fuelVolume</code></li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step E — Fuel Cost:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Ask for Input</strong> → Type: <strong>Number</strong> → Prompt: <code className="font-mono">Total fuel cost (₹)</code> → Allow Decimals: ✅</li>
-                    <li>Add: <strong>Set Variable</strong> → Name: <code className="font-mono text-[hsl(var(--primary))]">totalCost</code></li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step F — Full Tank or Partial Fill:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-1">
-                    <li>Add: <strong>Choose from Menu</strong> → Prompt: <code className="font-mono">Was this a full tank?</code></li>
-                    <li>Option 1: <code className="font-mono">Full Tank</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">isFullTank</code> to <code className="font-mono text-green-500">true</code></li>
-                    <li>Option 2: <code className="font-mono">Partial Fill</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">isFullTank</code> to <code className="font-mono text-amber-500">false</code></li>
-                  </ul>
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step G — Save to GaugeIQ:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-1">
-                    <li>Add: <strong>Get Contents of URL</strong></li>
-                    <li>URL: <code className="text-[hsl(var(--primary))] font-mono">https://gauge-iq.vercel.app/api/shortcuts/fuel</code></li>
-                    <li>Method: <strong>POST</strong></li>
-                    <li>Headers:
-                      <code className="block pl-4 font-mono text-xs">Authorization: Bearer [token]</code>
-                      <code className="block pl-4 font-mono text-xs">Content-Type: application/json</code>
-                    </li>
-                    <li>Request Body: <strong>JSON</strong></li>
-                  </ul>
+                <div className="space-y-2 text-xs sm:text-sm text-[hsl(var(--foreground))]/85">
+                  <p>1. <strong>Choose Vehicle &amp; Date:</strong> Same as above (select vehicle and formatted <code className="font-mono">yyyy-MM-dd</code> date).</p>
+                  <p>2. <strong>Odometer at Fill:</strong> Add <strong>Ask for Input</strong> (Number, Decimals: ✅) → Prompt: <code className="font-mono">Odometer reading at fill</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">odometerAtFill</code></p>
+                  <p>3. <strong>Fuel Volume:</strong> Add <strong>Ask for Input</strong> (Number, Decimals: ✅) → Prompt: <code className="font-mono">Fuel volume (litres)</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">fuelVolume</code></p>
+                  <p>4. <strong>Fuel Cost:</strong> Add <strong>Ask for Input</strong> (Number, Decimals: ✅) → Prompt: <code className="font-mono">Total fuel cost (₹)</code> → <strong>Set Variable</strong> <code className="font-mono text-[hsl(var(--primary))]">totalCost</code></p>
+                  <p>5. <strong>Full or Partial:</strong> Add <strong>Choose from Menu</strong>:
+                    <span className="block pl-4 text-xs font-mono mt-0.5">Option &quot;Full Tank&quot; → Set Variable <code className="text-green-500 font-bold">isFullTank = true</code></span>
+                    <span className="block pl-4 text-xs font-mono">Option &quot;Partial Fill&quot; → Set Variable <code className="text-amber-500 font-bold">isFullTank = false</code></span>
+                  </p>
+                  <p>6. <strong>Send to GaugeIQ:</strong> Add <strong>Get Contents of URL</strong></p>
+                  <div className="pl-4 font-mono text-xs">
+                    URL: <code className="text-[hsl(var(--primary))]">https://gauge-iq.vercel.app/api/shortcuts/fuel</code><br/>
+                    Method: <strong>POST</strong><br/>
+                    Headers:
+                    <code className="block pl-2">Authorization: Bearer [token]</code>
+                    <code className="block pl-2">Content-Type: application/json</code>
+                  </div>
                   <CodeBlock
                     code={`{\n  "vehicle_id": vehicle_id,\n  "date": date,\n  "odometerAtFill": odometerAtFill,\n  "fuelVolume": fuelVolume,\n  "totalCost": totalCost,\n  "isFullTank": isFullTank\n}`}
                     title="JSON Body"
                   />
-                </div>
-
-                <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3">
-                  <strong>Step H — Show Result Alert:</strong>
-                  <ul className="list-disc list-inside mt-1 text-[hsl(var(--foreground))]/80 pl-2 space-y-0.5">
-                    <li>Add: <strong>Get Dictionary Value</strong> → Key: <code className="font-mono text-[hsl(var(--primary))]">message</code> → from <strong>Contents of URL</strong></li>
-                    <li>Add: <strong>Show Alert</strong> → <code className="font-mono">[message]</code></li>
-                    <li className="text-xs text-[hsl(var(--foreground))]/60">Shows: <em>&quot;⛽ Full tank: 3.2L at ₹350 saved for 2024-01-15.&quot;</em></li>
-                  </ul>
+                  <p>7. <strong>Show Alert:</strong> Add <strong>Get Dictionary Value</strong> <code className="font-mono">message</code> → <strong>Show Alert</strong> <code className="font-mono">[message]</code></p>
                 </div>
               </div>
             </div>
@@ -609,87 +429,64 @@ export function ShortcutsGuideClient() {
         </section>
       )}
 
-      {/* API REFERENCE (cURL) */}
-      {showSection("api") && (
+      {/* TAB 3: API REFERENCE */}
+      {activeTab === "api" && (
         <section className="glass-card p-6 space-y-6">
-          <div className="border-b border-[hsl(var(--border))] pb-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))]/10 text-xs font-bold text-[hsl(var(--primary))]">
-                  ⚡
-                </span>
-                <h2 className="text-lg font-semibold">API Reference &amp; cURL Testing</h2>
-              </div>
-              <span className="rounded-full bg-[hsl(var(--muted))] px-2.5 py-0.5 text-xs font-mono text-[hsl(var(--foreground))]/80">
-                https://gauge-iq.vercel.app
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-[hsl(var(--foreground))]/70">
-              You can test each endpoint directly using Terminal or command prompt before setting up Shortcuts.
+          <div className="border-b border-[hsl(var(--border))] pb-3">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <span>⚡</span> cURL API Reference
+            </h3>
+            <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70 mt-1">
+              Test every endpoint directly with cURL against <code>https://gauge-iq.vercel.app</code>:
             </p>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  POST
-                </span>
-                <span>1. Login Endpoint</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">POST</span>
+                <span>1. Auth Login</span>
               </div>
-              <p className="mt-1 text-xs text-[hsl(var(--foreground))]/70">Returns access_token and refresh_token.</p>
               <CodeBlock
                 code={`curl -X POST https://gauge-iq.vercel.app/api/shortcuts/auth \\\n  -H "Content-Type: application/json" \\\n  -d '{"email":"you@example.com","password":"yourpassword"}'`}
               />
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  POST
-                </span>
-                <span>2. Refresh Token Endpoint</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">POST</span>
+                <span>2. Token Refresh</span>
               </div>
-              <p className="mt-1 text-xs text-[hsl(var(--foreground))]/70">Exchanges a refresh token for a brand new access token.</p>
               <CodeBlock
                 code={`curl -X POST https://gauge-iq.vercel.app/api/shortcuts/auth/refresh \\\n  -H "Content-Type: application/json" \\\n  -d '{"refresh_token":"your_refresh_token_here"}'`}
               />
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded bg-sky-500/10 px-2 py-0.5 text-xs font-bold text-sky-600 dark:text-sky-400">
-                  GET
-                </span>
-                <span>3. List Vehicles Endpoint</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                <span className="rounded bg-sky-500/10 px-2 py-0.5 text-xs font-bold text-sky-600 dark:text-sky-400">GET</span>
+                <span>3. List Vehicles</span>
               </div>
-              <p className="mt-1 text-xs text-[hsl(var(--foreground))]/70">Lists your vehicles for the shortcut picker.</p>
               <CodeBlock
                 code={`curl https://gauge-iq.vercel.app/api/shortcuts/vehicles \\\n  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"`}
               />
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  POST
-                </span>
-                <span>4. Add / Update Odometer (Upsert)</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">POST</span>
+                <span>4. Upsert Odometer Reading</span>
               </div>
-              <p className="mt-1 text-xs text-[hsl(var(--foreground))]/70">Safely updates if an entry already exists for this vehicle and date, otherwise inserts a new record.</p>
               <CodeBlock
                 code={`curl -X POST https://gauge-iq.vercel.app/api/shortcuts/odometer \\\n  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"vehicle_id":"YOUR_VEHICLE_UUID","date":"2024-01-15","odometerReading":12345.6}'`}
               />
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  POST
-                </span>
-                <span>5. Add Fuel Fill-Up</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">POST</span>
+                <span>5. Record Fuel Fill-Up</span>
               </div>
-              <p className="mt-1 text-xs text-[hsl(var(--foreground))]/70">Records fuel volume, cost, fill odometer reading, and full/partial tank status.</p>
               <CodeBlock
                 code={`curl -X POST https://gauge-iq.vercel.app/api/shortcuts/fuel \\\n  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"vehicle_id":"YOUR_VEHICLE_UUID","date":"2024-01-15","odometerAtFill":12345.6,"fuelVolume":3.2,"totalCost":350,"isFullTank":true}'`}
               />
@@ -698,36 +495,36 @@ export function ShortcutsGuideClient() {
         </section>
       )}
 
-      {/* TIPS & FAQ */}
-      {showSection("tips") && (
+      {/* TAB 4: TIPS & FAQ */}
+      {activeTab === "tips" && (
         <section className="glass-card p-6 space-y-4">
           <div className="flex items-center gap-2.5 border-b border-[hsl(var(--border))] pb-3">
             <span className="text-xl">💡</span>
-            <h2 className="text-lg font-semibold">Helpful Tips &amp; FAQ</h2>
+            <h3 className="text-lg font-semibold">Tips &amp; Best Practices</h3>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 text-sm text-[hsl(var(--foreground))]/85">
             <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 space-y-1.5">
-              <h3 className="font-semibold text-sm">⏱️ Token Expiry</h3>
+              <h4 className="font-semibold text-sm">🏎️ Home Screen &amp; Action Button</h4>
               <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
-                Your access token expires every ~1 hour. The main shortcut automatically checks for this and calls the refresh shortcut silently so you will rarely notice.
+                You can add the &quot;GaugeIQ&quot; shortcut as an icon to your iOS Home Screen, set it to your iPhone Action Button, or say <em>&quot;Hey Siri, GaugeIQ&quot;</em> to log readings in 5 seconds.
               </p>
             </div>
             <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 space-y-1.5">
-              <h3 className="font-semibold text-sm">🔑 Re-login if needed</h3>
+              <h4 className="font-semibold text-sm">🔄 Automatic Silent Refresh</h4>
               <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
-                If tokens ever get corrupted or removed from iCloud Drive, simply run the &quot;GaugeIQ Login&quot; shortcut once to renew credentials.
+                When your access token expires after 1 hour, Action 4 catches it, refreshes it using the saved refresh token, saves the new token to iCloud, and re-executes seamlessly.
               </p>
             </div>
             <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 space-y-1.5">
-              <h3 className="font-semibold text-sm">✏️ Safe Odometer Edits</h3>
+              <h4 className="font-semibold text-sm">✏️ Safe Odometer Updates</h4>
               <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
-                If you made a mistake or want to update today&apos;s odometer reading, run the odometer shortcut again with the corrected value — it safely updates the existing entry without creating duplicates.
+                If you made a typo or entered an incorrect reading for today, just trigger the shortcut again with the right number. The API safely updates today&apos;s record in place.
               </p>
             </div>
             <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 space-y-1.5">
-              <h3 className="font-semibold text-sm">⚡ Instant Sync</h3>
+              <h4 className="font-semibold text-sm">☁️ Instant Database Synchronization</h4>
               <p className="text-xs sm:text-sm text-[hsl(var(--foreground))]/70">
-                All data sent from Apple Shortcuts writes directly into your GaugeIQ Supabase database. You will immediately see new entries on your Dashboard, History, and Logs pages.
+                Data recorded via Shortcuts goes straight into your authenticated Supabase database. You&apos;ll see updated metrics on your Dashboard and History immediately.
               </p>
             </div>
           </div>
