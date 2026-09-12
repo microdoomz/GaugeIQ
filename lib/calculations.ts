@@ -384,8 +384,9 @@ export const aggregateMetrics = (
   const totalFuel = fillups.reduce((sum, f) => sum + f.fuelVolume, 0);
   const totalCost = fillups.reduce((sum, f) => sum + f.totalCost, 0);
 
-  // ---- Mileage: weighted average via full-to-full method ----
-  const fuelResult = computeFuelMileage(fillups);
+  // ---- Mileage: computed from the latest 20 fillups regardless of date filter ----
+  const mileageFillups = options?.allFillups ?? fillups;
+  const fuelResult = computeFuelMileage(mileageFillups);
   const avgMileage = fuelResult.weightedAvgMileage;
 
   // ---- CO2 ----

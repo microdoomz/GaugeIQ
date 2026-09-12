@@ -169,8 +169,8 @@ export default function DashboardClient({
     return withTypical.reduce((sum, v) => sum + v, 0) / withTypical.length;
   }, [vehicleFilter, vehicles]);
 
-  const effectiveMileageBase = metrics.avgMileage > 0 ? metrics.avgMileage : typicalMileageBase ?? 0;
-  const effectiveMileageBaseToday = avgMileageAllFillups > 0 ? avgMileageAllFillups : effectiveMileageBase;
+  const effectiveMileageBase = avgMileageAllFillups > 0 ? avgMileageAllFillups : (metrics.avgMileage > 0 ? metrics.avgMileage : typicalMileageBase ?? 0);
+  const effectiveMileageBaseToday = effectiveMileageBase;
   const effectiveMileageDisplay = fuelFactor > 0 ? (effectiveMileageBase * distanceFactor) / fuelFactor : effectiveMileageBase;
 
   const dataMinDate = useMemo(() => {
@@ -189,7 +189,7 @@ export default function DashboardClient({
     totalKm: metrics.totalKm * distanceFactor,
     totalFuel: metrics.totalFuel * fuelFactor,
     totalCost: metrics.totalCost,
-    avgMileage: fuelFactor > 0 ? (metrics.avgMileage * distanceFactor) / fuelFactor : 0,
+    avgMileage: fuelFactor > 0 ? (effectiveMileageBase * distanceFactor) / fuelFactor : 0,
     totalCO2: metrics.totalCO2 * co2Factor,
   };
 
@@ -332,8 +332,9 @@ export default function DashboardClient({
       fillups: anchorFillups,
       entries: anchorEntries,
       vehicles,
+      vehicleId: vehicleFilter === "all" ? undefined : vehicleFilter,
     });
-  }, [anchorFillups, anchorEntries, vehicles]);
+  }, [anchorFillups, anchorEntries, vehicles, vehicleFilter]);
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const avgFillVolume = vehicleFilteredFillups.length
@@ -363,7 +364,7 @@ export default function DashboardClient({
 
   const vehicleComparisons = useMemo(() => {
     return vehicles.map((v) => {
-      const vFillups = filteredFillups.filter((f) => f.vehicle_id === v.id);
+      const vFillups = fillups.filter((f) => f.vehicle_id === v.id);
       const cycles = computeFuelMileage(vFillups);
       const avgMileage = cycles.weightedAvgMileage;
       return {
@@ -373,7 +374,7 @@ export default function DashboardClient({
         actual: avgMileage,
       };
     });
-  }, [vehicles, filteredFillups]);
+  }, [vehicles, fillups]);
 
   const formatDateLabel = (value: string) => {
     try {
