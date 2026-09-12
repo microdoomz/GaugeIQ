@@ -215,71 +215,104 @@ export interface FuelMileageResult {
  * fuel) instead of a simple average of per-cycle values.
  */
 export const computeFuelMileage = (fillups: FuelFillUp[]): FuelMileageResult => {
-  const sorted = [...fillups].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  // Group fillups by vehicle_id so we never mix odometers across different vehicles
+  const byVehicle = new Map<string, FuelFillUp[]>();
+  fillups.forEach((f) => {
+    byVehicle.set(f.vehicle_id, [...(byVehicle.get(f.vehicle_id) ?? []), f]);
+  });
 
-  const cycles: MileageCycle[] = [];
+  const allCycles: MileageCycle[] = [];
+  let totalDistanceAcrossVehicles = 0;
+  let totalFuelAcrossVehicles = 0;
 
-  // State for the current accumulation window.
-  let cycleStartOdometer: number | null = null;
-  let accumulatedFuel = 0;
+  byVehicle.forEach((vFills) => {
+    const sorted = [...vFills].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
-  for (const fill of sorted) {
-    if (cycleStartOdometer === null) {
-      // We need a full-tank fill to start a cycle.
+    // Track full-to-full tank cycles for trend graphing
+    let cycleStartOdometer: number | null = null;
+    let accumulatedFuel = 0;
+
+    for (const fill of sorted) {
+      if (cycleStartOdometer === null) {
+        if (fill.isFullTank) {
+          cycleStartOdometer = fill.odometerAtFill;
+          accumulatedFuel = 0;
+        }
+        continue;
+      }
+
+      accumulatedFuel += fill.fuelVolume;
+
       if (fill.isFullTank) {
+        const distance = fill.odometerAtFill - cycleStartOdometer;
+        if (distance > 0 && accumulatedFuel > 0) {
+          const rawCycleMileage = distance / accumulatedFuel;
+          allCycles.push({
+            mileage: Number((rawCycleMileage * 0.90).toFixed(2)), // 10% reduction
+            date: fill.date,
+            fuelVolume: accumulatedFuel,
+            distance,
+          });
+        }
         cycleStartOdometer = fill.odometerAtFill;
         accumulatedFuel = 0;
       }
-      continue;
     }
 
-    // Accumulate fuel from this fill-up (whether partial or full).
-    accumulatedFuel += fill.fuelVolume;
-
-    if (fill.isFullTank) {
-      // Close the cycle: distance is from the last full-tank to this full-tank.
-      const distance = fill.odometerAtFill - cycleStartOdometer;
-      if (distance > 0 && accumulatedFuel > 0) {
-        cycles.push({
-          mileage: distance / accumulatedFuel,
-          date: fill.date,
-          fuelVolume: accumulatedFuel,
-          distance,
-        });
+    // If no full-tank cycles were found, fallback to interval cycles between consecutive fillups for trend display
+    if (allCycles.length === 0 && sorted.length >= 2) {
+      for (let i = 1; i < sorted.length; i++) {
+        const dist = sorted[i].odometerAtFill - sorted[i - 1].odometerAtFill;
+        const vol = sorted[i].fuelVolume;
+        if (dist > 0 && vol > 0) {
+          allCycles.push({
+            mileage: Number(((dist / vol) * 0.90).toFixed(2)),
+            date: sorted[i].date,
+            fuelVolume: vol,
+            distance: dist,
+          });
+        }
       }
-      // Start a new cycle from this full-tank fill.
-      cycleStartOdometer = fill.odometerAtFill;
-      accumulatedFuel = 0;
     }
-    // If partial, we just keep accumulating.
+
+    // Accurate mileage calculation requested:
+    // Take the last 20 fuel fillups for this vehicle
+    // Find the difference in odometer between the most recent and the least recent within those 20 fillups
+    // Add the total amount of fuel filled in those 20 most recent fillups
+    // Divide odometer difference by total fuel filled to get average mileage, then subtract 10%
+    if (sorted.length >= 2) {
+      const recentFills = sorted.slice(-20);
+      const firstRecent = recentFills[0];
+      const lastRecent = recentFills[recentFills.length - 1];
+      const distance = Math.max(lastRecent.odometerAtFill - firstRecent.odometerAtFill, 0);
+
+      const totalFuel = recentFills.reduce((sum, f) => sum + (f.fuelVolume || 0), 0);
+
+      if (totalFuel > 0 && distance > 0) {
+        totalDistanceAcrossVehicles += distance;
+        totalFuelAcrossVehicles += totalFuel;
+      }
+    }
+  });
+
+  // Calculate weighted average mileage across vehicles using the 20-fillup method with 10% reduction
+  let weightedAvgMileage = 0;
+  if (totalDistanceAcrossVehicles > 0 && totalFuelAcrossVehicles > 0) {
+    const rawMileage = totalDistanceAcrossVehicles / totalFuelAcrossVehicles;
+    weightedAvgMileage = Number((rawMileage * 0.90).toFixed(2));
+  } else if (allCycles.length > 0) {
+    const totalDist = allCycles.reduce((s, c) => s + c.distance, 0);
+    const totalFuel = allCycles.reduce((s, c) => s + c.fuelVolume, 0);
+    if (totalDist > 0 && totalFuel > 0) {
+      weightedAvgMileage = Number(((totalDist / totalFuel) * 0.90).toFixed(2));
+    }
   }
 
-  // Compute robust average over recent fillups (last 5 fillup intervals, requiring up to 6 fillups)
-  let recentAvgMileage = 0;
-  if (sorted.length > 1) {
-    const recentFills = sorted.slice(-6); // Take up to the last 6 fillups
-    const firstRecent = recentFills[0];
-    const lastRecent = recentFills[recentFills.length - 1];
-    const distance = lastRecent.odometerAtFill - firstRecent.odometerAtFill;
-    
-    let totalFuelRecent = 0;
-    for (let i = 1; i < recentFills.length; i++) {
-      totalFuelRecent += recentFills[i].fuelVolume;
-    }
-
-    if (totalFuelRecent > 0 && distance > 0) {
-      recentAvgMileage = distance / totalFuelRecent;
-    }
-  }
-
-  // Compute weighted average and variance statistics.
+  const cycles = allCycles.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const totalCycleDistance = cycles.reduce((s, c) => s + c.distance, 0);
   const totalCycleFuel = cycles.reduce((s, c) => s + c.fuelVolume, 0);
-  
-  // Use the robust recent average if available, as it perfectly handles partial fill-ups without being overly optimistic.
-  const weightedAvgMileage = recentAvgMileage > 0 ? recentAvgMileage : (totalCycleFuel > 0 ? totalCycleDistance / totalCycleFuel : 0);
 
   let mileageStdDev = 0;
   let mileageMin = 0;
@@ -475,7 +508,7 @@ export const computeSmartProjection = ({
   // Filter to relevant vehicle if specified.
   const vFillups = vehicleId ? fillups.filter((f) => f.vehicle_id === vehicleId) : fillups;
   const vEntries = vehicleId ? entries.filter((e) => e.vehicle_id === vehicleId) : entries;
-  const vehicle = vehicleId ? vehicles.find((v) => v.id === vehicleId) : undefined;
+  const vehicle = vehicleId ? vehicles.find((v) => v.id === vehicleId) : vehicles[0];
 
   if (!vFillups.length) return null;
 
@@ -483,14 +516,13 @@ export const computeSmartProjection = ({
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
-  // 1. Get EWMA of mileage from full-to-full cycles.
+  // 1. Get average mileage using the accurate 20-fillup formula (-10% adjustment).
   const fuelResult = computeFuelMileage(vFillups);
-  const cycleMileages = fuelResult.cycles.map((c) => c.mileage);
-  const ewmaMileage = cycleMileages.length > 0
-    ? ewma(cycleMileages, 0.3)
-    : (vehicle?.typicalMileage ?? 0);
+  const effectiveMileage = fuelResult.weightedAvgMileage > 0
+    ? fuelResult.weightedAvgMileage
+    : (vehicle?.typicalMileage && vehicle.typicalMileage > 0 ? vehicle.typicalMileage : 0);
 
-  if (ewmaMileage <= 0) return null;
+  if (effectiveMileage <= 0) return null;
 
   // 2. Get EWMA of daily distance from odometer entries.
   const sortedEntries = [...vEntries].sort(
@@ -509,68 +541,92 @@ export const computeSmartProjection = ({
   }
   const ewmaDailyDistance = dailyDistances.length > 0 ? ewma(dailyDistances, 0.3) : 0;
 
-  // 3. Calculate remaining fuel in tank.
-  // Find the last fill-up and compute fuel consumed since then.
+  // 3. Tank capacity resolution:
+  const explicitCapacity = Number(vehicle?.tankCapacity ?? (vehicle as any)?.tank_capacity ?? 0);
+  const maxFuelAddedEver = Math.max(...sortedFillups.map((f) => f.fuelVolume || 0), 0);
+  const tankCapacity = explicitCapacity > 0
+    ? explicitCapacity
+    : (maxFuelAddedEver > 0 ? maxFuelAddedEver * 1.15 : 45); // realistic default fallback if unspecified
+
+  // 4. Calculate remaining fuel in tank.
+  // Find latest odometer reading.
+  const latestOdoFromEntries = sortedEntries.length
+    ? sortedEntries[sortedEntries.length - 1].odometerReading
+    : 0;
   const lastFill = sortedFillups[sortedFillups.length - 1];
+  const latestOdoFromFillups = lastFill.odometerAtFill;
+  const latestOdometer = Math.max(latestOdoFromEntries, latestOdoFromFillups);
 
-  // Accumulate fuel added since the last full-tank fill-up.
-  // Walk backwards to find the last full-tank fill, summing partial fills.
-  let fuelInTankAtLastFullFill = 0;
-  let lastFullFillOdometer = lastFill.odometerAtFill;
-  let fuelAddedSinceLastFull = 0;
-
-  // Find the largest fillup ever recorded for this vehicle as a fallback tank capacity
-  const maxFuelAddedEver = Math.max(...sortedFillups.map(f => f.fuelVolume), 0);
-  const assumedTankCapacity = (vehicle?.tankCapacity && vehicle.tankCapacity > 0)
-    ? vehicle.tankCapacity
-    : (maxFuelAddedEver > 0 ? maxFuelAddedEver * 1.15 : 0); // 15% buffer
-
+  // Find the last full-tank fillup if one exists.
+  let lastFullIndex = -1;
   for (let i = sortedFillups.length - 1; i >= 0; i--) {
-    const f = sortedFillups[i];
-    fuelAddedSinceLastFull += f.fuelVolume;
-    if (f.isFullTank) {
-      lastFullFillOdometer = f.odometerAtFill;
-      // Use the known or estimated tank capacity, falling back to fill volume if needed
-      fuelInTankAtLastFullFill = assumedTankCapacity > 0 ? assumedTankCapacity : f.fuelVolume;
-      
-      // Now add back only the partial fills that came AFTER this full fill.
-      fuelAddedSinceLastFull = 0;
-      for (let j = i + 1; j < sortedFillups.length; j++) {
-        fuelAddedSinceLastFull += sortedFillups[j].fuelVolume;
-      }
+    if (sortedFillups[i].isFullTank) {
+      lastFullIndex = i;
       break;
     }
   }
 
-  const totalFuelAdded = fuelInTankAtLastFullFill + fuelAddedSinceLastFull;
+  let currentFuel = 0;
+  let simStartOdometer = 0;
 
-  // Find the latest odometer reading (from entries or fillups).
-  const latestOdoFromEntries = sortedEntries.length
-    ? sortedEntries[sortedEntries.length - 1].odometerReading
-    : 0;
-  const latestOdoFromFillups = lastFill.odometerAtFill;
-  const latestOdometer = Math.max(latestOdoFromEntries, latestOdoFromFillups);
+  if (lastFullIndex !== -1) {
+    // Start simulation at the last full fill: tank is at capacity
+    const fullFill = sortedFillups[lastFullIndex];
+    currentFuel = tankCapacity;
+    simStartOdometer = fullFill.odometerAtFill;
 
-  const distanceSinceLastFullFill = Math.max(latestOdometer - lastFullFillOdometer, 0);
-  const fuelConsumedSinceLastFull = distanceSinceLastFullFill / ewmaMileage;
+    // Simulate forward through any subsequent partial fills
+    for (let i = lastFullIndex + 1; i < sortedFillups.length; i++) {
+      const fill = sortedFillups[i];
+      const dist = Math.max(fill.odometerAtFill - simStartOdometer, 0);
+      const consumed = dist / effectiveMileage;
+      currentFuel = Math.max(currentFuel - consumed, 0);
+      // New fuel added cannot exceed the physical tank capacity
+      currentFuel = Math.min(currentFuel + fill.fuelVolume, tankCapacity);
+      simStartOdometer = fill.odometerAtFill;
+    }
+  } else {
+    // No full tank marked: simulate across the last few fillups (up to 5)
+    const recentSimFills = sortedFillups.slice(-5);
+    currentFuel = Math.min(recentSimFills[0].fuelVolume, tankCapacity);
+    simStartOdometer = recentSimFills[0].odometerAtFill;
 
-  const remainingFuelL = Math.max(totalFuelAdded - fuelConsumedSinceLastFull, 0);
+    for (let i = 1; i < recentSimFills.length; i++) {
+      const fill = recentSimFills[i];
+      const dist = Math.max(fill.odometerAtFill - simStartOdometer, 0);
+      const consumed = dist / effectiveMileage;
+      currentFuel = Math.max(currentFuel - consumed, 0);
+      currentFuel = Math.min(currentFuel + fill.fuelVolume, tankCapacity);
+      simStartOdometer = fill.odometerAtFill;
+    }
+  }
 
-  // 4. Project remaining range and days.
-  const remainingKm = remainingFuelL * ewmaMileage;
+  // Deduct fuel consumed from the last fillup to the latest recorded odometer
+  const distanceSinceLastFill = Math.max(latestOdometer - simStartOdometer, 0);
+  const fuelConsumedSinceLastFill = distanceSinceLastFill / effectiveMileage;
+  let remainingFuelL = Math.max(currentFuel - fuelConsumedSinceLastFill, 0);
+
+  // CLAMP TO TANK CAPACITY: Remaining fuel can NEVER exceed tank capacity
+  if (tankCapacity > 0) {
+    remainingFuelL = Math.min(remainingFuelL, tankCapacity);
+  }
+
+  // 5. Project remaining range and days.
+  const remainingKm = remainingFuelL * effectiveMileage;
   const remainingDays = ewmaDailyDistance > 0 ? remainingKm / ewmaDailyDistance : 0;
 
-  // 5. Tank percentage if capacity is known.
-  const tankCap = vehicle?.tankCapacity;
-  const tankPercent = tankCap && tankCap > 0 ? Math.min((remainingFuelL / tankCap) * 100, 100) : null;
+  // 6. Tank percentage strictly capped at 100%.
+  const tankPercent = tankCapacity > 0
+    ? Math.min(Math.round((remainingFuelL / tankCapacity) * 100), 100)
+    : null;
 
   return {
-    remainingFuelL,
-    remainingKm,
+    remainingFuelL: Number(remainingFuelL.toFixed(1)),
+    remainingKm: Number(remainingKm.toFixed(1)),
     remainingDays: Math.round(remainingDays),
-    ewmaMileage,
-    ewmaDailyDistance,
-    tankPercent: tankPercent !== null ? Number(tankPercent.toFixed(0)) : null,
+    ewmaMileage: Number(effectiveMileage.toFixed(1)),
+    ewmaDailyDistance: Number(ewmaDailyDistance.toFixed(1)),
+    tankPercent,
   };
 };
 

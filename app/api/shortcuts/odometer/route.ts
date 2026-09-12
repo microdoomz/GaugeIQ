@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
     .eq("date", date)
     .maybeSingle();
 
+  let entryId: string;
+  let action: "created" | "updated";
+
   if (existing) {
     // Update the existing entry in place
     const { error: updateError } = await supabase
@@ -81,37 +84,125 @@ export async function POST(req: NextRequest) {
     if (updateError) {
       return apiError(`Failed to update entry: ${updateError.message}`, 500);
     }
+    entryId = existing.id;
+    action = "updated";
+  } else {
+    // Insert new entry
+    const { data: inserted, error: insertError } = await supabase
+      .from("daily_odometer_entries")
+      .insert({
+        user_id: userId,
+        vehicle_id,
+        date,
+        odometerReading,
+        notes,
+      })
+      .select("id")
+      .single();
 
-    return apiSuccess({
-      id: existing.id,
-      action: "updated",
-      message: `✅ Odometer updated to ${odometerReading} for ${date}.`,
-    });
+    if (insertError) {
+      return apiError(`Failed to save entry: ${insertError.message}`, 500);
+    }
+    entryId = inserted.id;
+    action = "created";
   }
 
-  // --- Insert new entry ---
-  const { data: inserted, error: insertError } = await supabase
+  // --- Calculate distance driven, fuel consumed, and money spent ---
+  const { data: prevEntry } = await supabase
     .from("daily_odometer_entries")
-    .insert({
-      user_id: userId,
-      vehicle_id,
-      date,
-      odometerReading,
-      notes,
-    })
-    .select("id")
-    .single();
+    .select("odometerReading, date")
+    .eq("vehicle_id", vehicle_id)
+    .lt("date", date)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (insertError) {
-    return apiError(`Failed to save entry: ${insertError.message}`, 500);
+  const { data: prevFill } = await supabase
+    .from("fuel_fillups")
+    .select("odometerAtFill, date")
+    .eq("vehicle_id", vehicle_id)
+    .lt("date", date)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const prevOdometer = Math.max(
+    Number(prevEntry?.odometerReading ?? 0),
+    Number(prevFill?.odometerAtFill ?? 0)
+  );
+
+  const distanceDriven = prevOdometer > 0 && odometerReading > prevOdometer
+    ? Number((odometerReading - prevOdometer).toFixed(1))
+    : 0;
+
+  // Retrieve fillups for vehicle to calculate 20-fillup average mileage (-10%) and price per litre
+  const { data: fillups } = await supabase
+    .from("fuel_fillups")
+    .select("odometerAtFill, fuelVolume, totalCost, fuelPricePerLitre, date")
+    .eq("vehicle_id", vehicle_id)
+    .order("date", { ascending: true });
+
+  let avgMileage = 0;
+  if (fillups && fillups.length >= 2) {
+    const recentFills = fillups.slice(-20);
+    const firstRecent = recentFills[0];
+    const lastRecent = recentFills[recentFills.length - 1];
+    const dist = Math.max(Number(lastRecent.odometerAtFill) - Number(firstRecent.odometerAtFill), 0);
+    const totalFuel = recentFills.reduce((sum, f) => sum + Number(f.fuelVolume || 0), 0);
+    if (dist > 0 && totalFuel > 0) {
+      avgMileage = Number(((dist / totalFuel) * 0.90).toFixed(2));
+    }
+  }
+
+  // Fallback to vehicle typicalMileage if < 2 fillups
+  if (avgMileage <= 0) {
+    const { data: vehData } = await supabase
+      .from("vehicles")
+      .select("typicalMileage")
+      .eq("id", vehicle_id)
+      .maybeSingle();
+    if (vehData?.typicalMileage && Number(vehData.typicalMileage) > 0) {
+      avgMileage = Number(vehData.typicalMileage);
+    }
+  }
+
+  // Price per litre from latest fillup
+  let pricePerLitre = 0;
+  if (fillups && fillups.length > 0) {
+    const lastFill = fillups[fillups.length - 1];
+    if (lastFill.fuelPricePerLitre && Number(lastFill.fuelPricePerLitre) > 0) {
+      pricePerLitre = Number(lastFill.fuelPricePerLitre);
+    } else if (lastFill.totalCost && lastFill.fuelVolume && Number(lastFill.fuelVolume) > 0) {
+      pricePerLitre = Number(lastFill.totalCost) / Number(lastFill.fuelVolume);
+    }
+  }
+
+  let fuelConsumed: number | null = null;
+  let moneySpent: number | null = null;
+  if (distanceDriven > 0 && avgMileage > 0) {
+    fuelConsumed = Number((distanceDriven / avgMileage).toFixed(2));
+    if (pricePerLitre > 0) {
+      moneySpent = Number((fuelConsumed * pricePerLitre).toFixed(2));
+    }
+  }
+
+  let message = `✅ Odometer ${action === "updated" ? "updated to" : "saved at"} ${odometerReading} for ${date}.`;
+  if (distanceDriven > 0 && fuelConsumed != null) {
+    message = `✅ Odometer ${action === "updated" ? "updated to" : "saved at"} ${odometerReading} (+${distanceDriven} km). Est. fuel: ${fuelConsumed} L${moneySpent != null ? ` (₹${Math.round(moneySpent)})` : ""}.`;
   }
 
   return apiSuccess(
     {
-      id: inserted.id,
-      action: "created",
-      message: `✅ Odometer reading of ${odometerReading} saved for ${date}.`,
+      id: entryId,
+      action,
+      odometerReading,
+      distanceDriven: distanceDriven > 0 ? distanceDriven : null,
+      avgMileage: avgMileage > 0 ? avgMileage : null,
+      fuelConsumed,
+      moneySpent,
+      pricePerLitre: pricePerLitre > 0 ? Number(pricePerLitre.toFixed(2)) : null,
+      message,
     },
-    201
+    action === "created" ? 201 : 200
   );
 }

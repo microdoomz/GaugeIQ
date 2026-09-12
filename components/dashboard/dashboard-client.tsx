@@ -144,10 +144,9 @@ export default function DashboardClient({
     const today = new Date();
     const todayRange = { from: startOfDay(today), to: endOfDay(today) };
     const readings = computeOdometerDistancesForRange(anchorEntries, anchorFillups, todayRange);
-    const anchor = readings.find((r) => r.isAnchor);
-    const latestToday = [...readings].reverse().find((r) => !r.isAnchor);
-    if (!anchor || !latestToday) return null;
-    return Math.max(latestToday.odometer - anchor.odometer, 0);
+    const inRange = readings.filter((r) => !r.isAnchor);
+    if (!inRange.length) return null;
+    return inRange.reduce((sum, r) => sum + (r.distanceSincePrev ?? 0), 0);
   }, [anchorEntries, anchorFillups]);
 
   const metrics = useMemo(
