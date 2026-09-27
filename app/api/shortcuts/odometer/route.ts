@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     Number(prevFill?.odometerAtFill ?? 0)
   );
 
-  const distanceDriven = prevOdometer > 0 && odometerReading > prevOdometer
+  const distanceDriven = prevOdometer > 0 && odometerReading >= prevOdometer
     ? Number((odometerReading - prevOdometer).toFixed(1))
     : 0;
 

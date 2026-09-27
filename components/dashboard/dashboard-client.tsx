@@ -11,6 +11,7 @@ import {
   unifiedHistory,
   parseLocalDate,
   formatLocalDate,
+  inactivityReminderNeeded,
 } from "@/lib/calculations";
 import { DailyOdometerEntry, FuelFillUp, HistoryItem, Timeframe, Vehicle, UserPreferences } from "@/lib/types";
 import { TimeRangeFilter } from "@/components/filters/time-range-filter";
@@ -143,11 +144,17 @@ export default function DashboardClient({
   );
 
   const todayDistance = useMemo(() => {
+    const todayStr = formatLocalDate(new Date());
+    const hasTodayReading =
+      anchorEntries.some((e) => e.date?.slice(0, 10) === todayStr) ||
+      anchorFillups.some((f) => f.date?.slice(0, 10) === todayStr);
+
+    if (!hasTodayReading) return null;
+
     const today = new Date();
     const todayRange = { from: startOfDay(today), to: endOfDay(today) };
     const readings = computeOdometerDistancesForRange(anchorEntries, anchorFillups, todayRange);
     const inRange = readings.filter((r) => !r.isAnchor);
-    if (!inRange.length) return null;
     return inRange.reduce((sum, r) => sum + (r.distanceSincePrev ?? 0), 0);
   }, [anchorEntries, anchorFillups]);
 
@@ -176,13 +183,13 @@ export default function DashboardClient({
   const effectiveMileageDisplay = fuelFactor > 0 ? (effectiveMileageBase * distanceFactor) / fuelFactor : effectiveMileageBase;
 
   const dataMinDate = useMemo(() => {
-    const dates = [...vehicleFilteredEntries, ...vehicleFilteredFillups].map((i) => new Date(i.date).getTime());
+    const dates = [...vehicleFilteredEntries, ...vehicleFilteredFillups].map((i) => parseLocalDate(i.date).getTime());
     if (!dates.length) return null;
     return new Date(Math.min(...dates));
   }, [vehicleFilteredEntries, vehicleFilteredFillups]);
 
   const dataMaxDate = useMemo(() => {
-    const dates = [...vehicleFilteredEntries, ...vehicleFilteredFillups].map((i) => new Date(i.date).getTime());
+    const dates = [...vehicleFilteredEntries, ...vehicleFilteredFillups].map((i) => parseLocalDate(i.date).getTime());
     if (!dates.length) return null;
     return new Date(Math.max(...dates));
   }, [vehicleFilteredEntries, vehicleFilteredFillups]);
@@ -197,12 +204,16 @@ export default function DashboardClient({
 
   const isToday = timeframe === "today";
 
+  const isReminderNeeded = useMemo(() => {
+    return inactivityReminderNeeded(entries);
+  }, [entries]);
+
   const todayFuelPricePerLitre = useMemo(() => {
     const last = [...anchorFillups]
       .filter((f) => typeof f.fuelPricePerLitre === "number" && f.fuelPricePerLitre > 0)
       .sort((a, b) => {
-        const da = new Date(a.date).getTime();
-        const db = new Date(b.date).getTime();
+        const da = parseLocalDate(a.date).getTime();
+        const db = parseLocalDate(b.date).getTime();
         if (da !== db) return db - da;
         const ca = a.created_at ? new Date(a.created_at).getTime() : da;
         const cb = b.created_at ? new Date(b.created_at).getTime() : db;
@@ -215,7 +226,7 @@ export default function DashboardClient({
 
   const todayCO2Factor = useMemo(() => {
     const last = [...anchorFillups]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())[0];
     const veh = vehicles.find((v) => v.id === last?.vehicle_id);
     if (veh?.fuelType === "diesel") return 2.7;
     if (veh?.fuelType === "petrol") return 2.3;
@@ -251,8 +262,8 @@ export default function DashboardClient({
         .filter(
           (r) =>
             !r.isAnchor &&
-            new Date(r.date).getTime() >= rangeBounds.start &&
-            new Date(r.date).getTime() <= rangeBounds.end
+            parseLocalDate(r.date).getTime() >= rangeBounds.start &&
+            parseLocalDate(r.date).getTime() <= rangeBounds.end
         )
         .map((r) => ({
           date: r.date,
@@ -353,7 +364,7 @@ export default function DashboardClient({
     const map = new Map<string, number>();
     distanceReadings.forEach((r) => {
       if (r.isAnchor) return;
-      const ts = new Date(r.date).getTime();
+      const ts = parseLocalDate(r.date).getTime();
       if (ts < rangeBounds.start || ts > rangeBounds.end) return;
       map.set(r.vehicle_id, (map.get(r.vehicle_id) ?? 0) + (r.distanceSincePrev ?? 0) * distanceFactor);
     });
@@ -427,7 +438,7 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {reminderNeeded && (
+      {isReminderNeeded && (
         <div className="glass-card flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
             <p className="text-sm font-medium">Don’t forget today’s odometer reading</p>

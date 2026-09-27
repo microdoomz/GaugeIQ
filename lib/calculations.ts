@@ -30,8 +30,8 @@ export interface OdometerDistancePoint {
  */
 export const parseLocalDate = (dateStr: string): Date => {
   if (!dateStr) return new Date();
-  if (dateStr.includes("T")) return new Date(dateStr);
-  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr.slice(0, 10);
+  const [y, m, d] = dateOnly.split("-").map(Number);
   if (!y || !m || !d) return new Date(dateStr);
   return new Date(y, m - 1, d, 12, 0, 0);
 };
@@ -393,8 +393,8 @@ export const aggregateMetrics = (
 
   // ---- Total distance: single reliable method ----
   const combinedDates = [
-    ...distanceEntries.map((e) => new Date(e.date).getTime()),
-    ...distanceFillups.map((f) => new Date(f.date).getTime()),
+    ...distanceEntries.map((e) => parseLocalDate(e.date).getTime()),
+    ...distanceFillups.map((f) => parseLocalDate(f.date).getTime()),
   ].filter((t) => Number.isFinite(t));
   const fallbackFrom = combinedDates.length ? new Date(Math.min(...combinedDates)) : new Date("1970-01-01");
   const fallbackTo = combinedDates.length ? new Date(Math.max(...combinedDates)) : new Date();
@@ -425,8 +425,8 @@ export const aggregateMetrics = (
     const month = f.date.slice(0, 7);
     const entry = monthMileage.get(month) ?? { distance: 0, fuel: 0 };
     const prev = fillups
-      .filter((x) => x.vehicle_id === f.vehicle_id && new Date(x.date) < new Date(f.date))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      .filter((x) => x.vehicle_id === f.vehicle_id && parseLocalDate(x.date).getTime() < parseLocalDate(f.date).getTime())
+      .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())[0];
     if (prev) {
       entry.distance += Math.max(f.odometerAtFill - prev.odometerAtFill, 0);
     }

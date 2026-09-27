@@ -31,25 +31,25 @@ export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userI
     const odometerReading = Number(formData.get("odometerReading"));
     const notes = String(formData.get("notes") || "") || null;
 
-    // Inline validation: odometer should not go backwards
-    const { data: latest } = await supabase
+    // Fetch previous entry strictly before this date
+    const { data: prevEntry } = await supabase
       .from("daily_odometer_entries")
       .select("odometerReading")
       .eq("vehicle_id", vehicle_id)
-      .lte("date", date)
+      .lt("date", date)
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (latest && odometerReading < Number(latest.odometerReading)) {
-      setError("Odometer cannot be less than your last entry for this vehicle.");
+    if (prevEntry && odometerReading < Number(prevEntry.odometerReading)) {
+      setError("Odometer cannot be less than your previous entry for this vehicle.");
       setLoading(false);
       return;
     }
 
     // Distance driven since previous entry
-    const prevOdo = latest ? Number(latest.odometerReading) : 0;
-    const distanceDriven = prevOdo > 0 && odometerReading > prevOdo ? odometerReading - prevOdo : 0;
+    const prevOdo = prevEntry ? Number(prevEntry.odometerReading) : 0;
+    const distanceDriven = prevOdo > 0 && odometerReading >= prevOdo ? odometerReading - prevOdo : 0;
 
     // Fetch fillups to calculate accurate mileage and price per litre
     const { data: fillups } = await supabase
@@ -94,18 +94,43 @@ export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userI
       }
     }
 
-    const { error: insertError } = await supabase.from("daily_odometer_entries").insert({
-      user_id: userId,
-      vehicle_id,
-      date,
-      odometerReading,
-      notes,
-    });
-    if (insertError) setError(insertError.message);
+    // Check for existing entry on same vehicle + date
+    const { data: existing } = await supabase
+      .from("daily_odometer_entries")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("vehicle_id", vehicle_id)
+      .eq("date", date)
+      .maybeSingle();
+
+    let saveError = null;
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("daily_odometer_entries")
+        .update({ odometerReading, notes })
+        .eq("id", existing.id);
+      saveError = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from("daily_odometer_entries")
+        .insert({
+          user_id: userId,
+          vehicle_id,
+          date,
+          odometerReading,
+          notes,
+        });
+      saveError = insertError;
+    }
+
+    if (saveError) setError(saveError.message);
     else {
       let msg = "Saved";
       if (distanceDriven > 0 && fuelConsumed != null) {
         msg = `Saved! +${distanceDriven.toFixed(1)} ${distanceUnitLabel} · Fuel consumed: ${fuelConsumed.toFixed(2)} ${fuelUnitLabel}${cost != null ? ` (${currency}${Math.round(cost)})` : ""}`;
+        setFeedback(msg);
+      } else {
+        msg = `Saved odometer reading ${odometerReading} ${distanceUnitLabel}`;
         setFeedback(msg);
       }
       push({ message: msg, type: "success" });
