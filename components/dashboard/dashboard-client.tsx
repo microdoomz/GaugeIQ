@@ -9,6 +9,8 @@ import {
   filterByRange,
   computeSmartProjection,
   unifiedHistory,
+  parseLocalDate,
+  formatLocalDate,
 } from "@/lib/calculations";
 import { DailyOdometerEntry, FuelFillUp, HistoryItem, Timeframe, Vehicle, UserPreferences } from "@/lib/types";
 import { TimeRangeFilter } from "@/components/filters/time-range-filter";
@@ -87,8 +89,8 @@ export default function DashboardClient({
   const activeRange = useMemo(() => {
     if (timeframe === "custom") {
       return {
-        from: new Date(customRange.from),
-        to: new Date(customRange.to),
+        from: parseLocalDate(customRange.from),
+        to: parseLocalDate(customRange.to),
       };
     }
     return defaultRangeForTimeframe(timeframe);
@@ -336,7 +338,7 @@ export default function DashboardClient({
     });
   }, [anchorFillups, anchorEntries, vehicles, vehicleFilter]);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = formatLocalDate(new Date());
   const avgFillVolume = vehicleFilteredFillups.length
     ? vehicleFilteredFillups.reduce((sum, f) => sum + f.fuelVolume, 0) / vehicleFilteredFillups.length
     : 0;
@@ -378,7 +380,7 @@ export default function DashboardClient({
 
   const formatDateLabel = (value: string) => {
     try {
-      return format(new Date(value), "MMM d");
+      return format(parseLocalDate(value), "MMM d");
     } catch (e) {
       return value;
     }

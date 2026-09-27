@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
-import { defaultRangeForTimeframe, inactivityReminderNeeded } from "@/lib/calculations";
+import { defaultRangeForTimeframe, inactivityReminderNeeded, parseLocalDate, formatLocalDate, filterByRange, unifiedHistory } from "@/lib/calculations";
 import { Timeframe, DailyOdometerEntry, FuelFillUp, Vehicle, HistoryItem } from "@/lib/types";
 import DashboardClient from "@/components/dashboard/dashboard-client";
-import { filterByRange, unifiedHistory } from "@/lib/calculations";
 import { AppShell } from "@/components/layout/app-shell";
 import { UserPreferences } from "@/lib/types";
 
@@ -83,7 +82,7 @@ export default async function DashboardPage({
   const timeframe = (searchParams?.timeframe as Timeframe) || "30d";
   const range =
     searchParams?.from && searchParams?.to
-      ? { from: new Date(searchParams.from), to: new Date(searchParams.to) }
+      ? { from: parseLocalDate(searchParams.from), to: parseLocalDate(searchParams.to) }
       : defaultRangeForTimeframe(timeframe);
 
   const filteredEntries = filterByRange(entries, range.from, range.to);
@@ -108,7 +107,7 @@ export default async function DashboardPage({
     >
       <DashboardClient
         initialTimeframe={timeframe}
-        initialRange={{ from: range.from.toISOString(), to: range.to.toISOString() }}
+        initialRange={{ from: formatLocalDate(range.from), to: formatLocalDate(range.to) }}
         entries={entries as DailyOdometerEntry[]}
         fillups={fillups as FuelFillUp[]}
         vehicles={vehicles as Vehicle[]}

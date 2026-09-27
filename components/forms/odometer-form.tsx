@@ -8,6 +8,7 @@ import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { Vehicle, UserPreferences } from "@/lib/types";
 import { useToast } from "../ui/toast";
+import { formatLocalDate } from "@/lib/calculations";
 
 export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userId: string; vehicles: Vehicle[]; onSaved?: () => void; preferences?: UserPreferences }) => {
   const supabase = createSupabaseBrowserClient();
@@ -114,7 +115,7 @@ export const OdometerForm = ({ userId, vehicles, onSaved, preferences }: { userI
     setLoading(false);
   };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatLocalDate(new Date());
 
   return (
     <form action={handleSubmit} className="grid grid-cols-1 gap-3 md:grid-cols-2">

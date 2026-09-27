@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { authenticateRequest, apiError, apiSuccess } from "@/lib/apiAuth";
+import { formatLocalDate } from "@/lib/calculations";
 
 /**
  * POST /api/shortcuts/odometer
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const vehicle_id = body.vehicle_id as string | undefined;
-  const date = (body.date as string | undefined) ?? new Date().toISOString().slice(0, 10);
+  const date = (body.date as string | undefined) ?? formatLocalDate(new Date());
   const odometerReading = Number(body.odometerReading);
   const notes = (body.notes as string | undefined) ?? null;
 

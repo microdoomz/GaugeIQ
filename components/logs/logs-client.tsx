@@ -6,7 +6,7 @@ import { OdometerForm } from "@/components/forms/odometer-form";
 import { DailyOdometerEntry, FuelFillUp, Vehicle, UserPreferences } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { computeSmartProjection } from "@/lib/calculations";
+import { computeSmartProjection, formatLocalDate } from "@/lib/calculations";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -31,7 +31,7 @@ export default function LogsClient({ userId, vehicles, entries, fillups, metrics
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
   const [confirm, setConfirm] = useState<{ id: string; type: "fuel" | "odo" } | null>(null);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatLocalDate(new Date());
 
   useEffect(() => {
     setPrefs(preferences);

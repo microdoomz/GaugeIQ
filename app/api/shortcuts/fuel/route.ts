@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { authenticateRequest, apiError, apiSuccess } from "@/lib/apiAuth";
-import { computeSmartProjection, projectedRange } from "@/lib/calculations";
+import { computeSmartProjection, projectedRange, formatLocalDate } from "@/lib/calculations";
 import { DailyOdometerEntry, FuelFillUp, Vehicle } from "@/lib/types";
 
 /**
@@ -37,8 +37,7 @@ export async function POST(req: NextRequest) {
   const vehicle_id = body.vehicle_id as string | undefined;
   const date =
     (body.date as string | undefined) ??
-    new Date().toISOString().slice(0, 10);
-
+    formatLocalDate(new Date());
   const odometerAtFill = Number(body.odometerAtFill);
   const fuelVolume = Number(body.fuelVolume);
   const totalCost = Number(body.totalCost);

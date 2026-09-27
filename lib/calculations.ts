@@ -23,12 +23,35 @@ export interface OdometerDistancePoint {
   distanceSincePrev: number;
 }
 
+/**
+ * Parse a YYYY-MM-DD string into a Date at local noon.
+ * Using local noon guarantees the Date falls strictly inside local startOfDay/endOfDay
+ * regardless of timezone offset or DST transitions.
+ */
+export const parseLocalDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  if (dateStr.includes("T")) return new Date(dateStr);
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return new Date(dateStr);
+  return new Date(y, m - 1, d, 12, 0, 0);
+};
+
+/**
+ * Format a Date object as YYYY-MM-DD in local time (NOT UTC toISOString).
+ */
+export const formatLocalDate = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const sortReadings = (
   a: { date: string; created_at?: string; id?: string },
   b: { date: string; created_at?: string; id?: string }
 ) => {
-  const da = new Date(a.date).getTime();
-  const db = new Date(b.date).getTime();
+  const da = parseLocalDate(a.date).getTime();
+  const db = parseLocalDate(b.date).getTime();
   if (da !== db) return da - db;
   const ca = a.created_at ? new Date(a.created_at).getTime() : da;
   const cb = b.created_at ? new Date(b.created_at).getTime() : db;
@@ -99,9 +122,9 @@ export const computeOdometerDistancesForRange = (
 
   byVehicle.forEach((list) => {
     const sorted = [...list].sort(sortReadings);
-    const anchor = sorted.filter((r) => new Date(r.date).getTime() < start).pop();
+    const anchor = sorted.filter((r) => parseLocalDate(r.date).getTime() < start).pop();
     const inRange = sorted.filter((r) => {
-      const t = new Date(r.date).getTime();
+      const t = parseLocalDate(r.date).getTime();
       return t >= start && t <= end;
     });
     if (!anchor && !inRange.length) return;
@@ -109,8 +132,8 @@ export const computeOdometerDistancesForRange = (
 
     let prev: (typeof series)[number] | undefined;
     series.forEach((r) => {
-      const prevIsAnchor = Boolean((prev as any)?.isAnchor);
-      const distance = prev ? (prevIsAnchor ? 0 : Math.max(r.odometer - prev.odometer, 0)) : 0;
+      // Calculate distance delta from previous reading (including when prev is the anchor)
+      const distance = prev ? Math.max(r.odometer - prev.odometer, 0) : 0;
       result.push({ ...r, distanceSincePrev: distance });
       prev = r;
     });
@@ -131,7 +154,7 @@ export const computeDistances = (entries: DailyOdometerEntry[]) => {
   const distances = new Map<string, number>();
 
   byVehicle.forEach((list) => {
-    const sorted = [...list].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...list].sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
     sorted.forEach((entry, idx) => {
       if (idx === 0) {
         distances.set(entry.id, 0);
@@ -144,7 +167,7 @@ export const computeDistances = (entries: DailyOdometerEntry[]) => {
   });
 
   return [...entries]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
     .map((entry) => ({ ...entry, distanceSincePrev: distances.get(entry.id) ?? 0 }));
 };
 
@@ -649,7 +672,7 @@ export const filterByRange = <T extends { date: string }>(items: T[], from: Date
   const start = startOfDay(from);
   const end = endOfDay(to);
   return items.filter((i) => {
-    const d = new Date(i.date);
+    const d = parseLocalDate(i.date);
     return isWithinInterval(d, { start, end });
   });
 };
@@ -658,20 +681,20 @@ export const defaultRangeForTimeframe = (timeframe: string): { from: Date; to: D
   const today = new Date();
   switch (timeframe) {
     case "today":
-      return { from: today, to: today };
+      return { from: startOfDay(today), to: endOfDay(today) };
     case "7d":
-      return { from: addDays(today, -6), to: today };
+      return { from: startOfDay(addDays(today, -6)), to: endOfDay(today) };
     case "30d":
-      return { from: addDays(today, -29), to: today };
+      return { from: startOfDay(addDays(today, -29)), to: endOfDay(today) };
     case "this-month":
       return { from: startOfMonth(today), to: endOfMonth(today) };
     case "last-month":
       const firstPrev = startOfMonth(addDays(startOfMonth(today), -1));
       return { from: firstPrev, to: endOfMonth(firstPrev) };
     case "all":
-      return { from: new Date("1970-01-01"), to: today };
+      return { from: new Date(2000, 0, 1), to: endOfDay(today) };
     default:
-      return { from: new Date("1970-01-01"), to: today };
+      return { from: new Date(2000, 0, 1), to: endOfDay(today) };
   }
 };
 
@@ -719,7 +742,7 @@ export const unifiedHistory = (
   }));
 
   return [...entryHistory, ...fuelHistory].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()
   );
 };
 
@@ -729,8 +752,16 @@ export const unifiedHistory = (
 
 export const inactivityReminderNeeded = (entries: DailyOdometerEntry[]) => {
   if (!entries.length) return true;
-  const latest = entries.reduce((a, b) => (new Date(a.date) > new Date(b.date) ? a : b));
+  const todayStr = formatLocalDate(new Date());
+  // If user has an entry matching today's local date, reminder is not needed
+  const hasToday = entries.some((e) => e.date === todayStr);
+  if (hasToday) return false;
+
+  const latest = entries.reduce((a, b) => (parseLocalDate(a.date) > parseLocalDate(b.date) ? a : b));
   const today = new Date();
-  const diffDays = Math.floor((today.getTime() - new Date(latest.date).getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(
+    (startOfDay(today).getTime() - startOfDay(parseLocalDate(latest.date)).getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
   return diffDays >= 1;
 };
