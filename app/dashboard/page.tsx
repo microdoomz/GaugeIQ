@@ -79,6 +79,22 @@ export default async function DashboardPage({
   const entries = (entriesData ?? []) as DailyOdometerEntry[];
   const fillups = (fillupsData ?? []) as FuelFillUp[];
 
+  // ---- DEBUG: Log entry data to diagnose "Today" filter issue ----
+  const dbgTodayStr = formatLocalDate(new Date());
+  const dbgEntryDates = entries.map((e) => e.date).slice(-10);
+  const dbgHasToday = entries.some((e) => e.date === dbgTodayStr);
+  const dbgReminderNeeded = inactivityReminderNeeded(entries);
+  console.log("[DASHBOARD DEBUG]", JSON.stringify({
+    serverTime: new Date().toISOString(),
+    todayStr: dbgTodayStr,
+    totalEntries: entries.length,
+    totalFillups: fillups.length,
+    last10EntryDates: dbgEntryDates,
+    hasEntryForToday: dbgHasToday,
+    reminderNeeded: dbgReminderNeeded,
+  }));
+  // ---- END DEBUG ----
+
   const timeframe = (searchParams?.timeframe as Timeframe) || "30d";
   const range =
     searchParams?.from && searchParams?.to

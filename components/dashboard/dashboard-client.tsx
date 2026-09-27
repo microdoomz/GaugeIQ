@@ -732,6 +732,32 @@ export default function DashboardClient({
           {history.length === 0 && <p className="text-[hsl(var(--foreground))]/60">No history yet. Add odometer or fuel logs.</p>}
         </div>
       </div>
+
+      {/* ---- DEBUG PANEL (remove after fixing) ---- */}
+      <details className="glass-card p-4 text-xs font-mono">
+        <summary className="cursor-pointer text-sm font-medium">🔍 Debug Info (click to expand)</summary>
+        <div className="mt-2 space-y-1 max-h-60 overflow-auto">
+          <p><strong>Client local date:</strong> {formatLocalDate(new Date())}</p>
+          <p><strong>Timeframe:</strong> {timeframe}</p>
+          <p><strong>isToday:</strong> {String(isToday)}</p>
+          <p><strong>Total entries (all):</strong> {entries.length}</p>
+          <p><strong>anchorEntries count:</strong> {anchorEntries.length}</p>
+          <p><strong>filteredEntries count:</strong> {vehicleFilteredEntries.length}</p>
+          <p><strong>todayDistance:</strong> {String(todayDistance)}</p>
+          <p><strong>isReminderNeeded:</strong> {String(isReminderNeeded)}</p>
+          <p><strong>reminderNeeded (server prop):</strong> {String(reminderNeeded)}</p>
+          <p><strong>hasTodayReading (client):</strong> {String(
+            anchorEntries.some((e) => e.date?.slice(0, 10) === formatLocalDate(new Date())) ||
+            anchorFillups.some((f) => f.date?.slice(0, 10) === formatLocalDate(new Date()))
+          )}</p>
+          <p><strong>Entry dates (last 10):</strong> {entries.slice(-10).map((e) => e.date).join(", ")}</p>
+          <p><strong>Fillup dates (last 5):</strong> {fillups.slice(-5).map((f) => f.date).join(", ")}</p>
+          <p><strong>effectiveMileageBase:</strong> {effectiveMileageBase}</p>
+          <p><strong>avgMileageAllFillups:</strong> {avgMileageAllFillups}</p>
+          <p><strong>distanceReadings count:</strong> {distanceReadings.length}</p>
+          <p><strong>distanceSeries count:</strong> {distanceSeries.length}</p>
+        </div>
+      </details>
     </div>
   );
 }
